@@ -1,7 +1,7 @@
 # PA Secure Chat
 
 ## Introdução
-Este projeto, desenvolvido no contexto da disciplina de Programação Avançada, é focado na criação de um sistema de mensagens instantâneas seguro, denominado `pa-secure-chat`. O sistema visa permitir a comunicação em tempo real entre os usuários com garantias de privacidade, integridade e autenticidade das mensagens.
+Este projeto, desenvolvido no contexto da disciplina de Programação Avançada, é focado na criação de um sistema de mensagens instantâneas seguro, denominado `pa-secure-chat`. O sistema visa permitir a comunicação em tempo real entre os utilizadores com garantias de privacidade, integridade e autenticidade das mensagens.
 
 ## Funcionalidades
 - **Comunicação Segura:** Utilização de encriptação simétrica e assimétrica para garantir a confidencialidade das mensagens.
