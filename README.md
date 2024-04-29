@@ -6,7 +6,7 @@ Este projeto, desenvolvido no contexto da disciplina de Programação Avançada,
 ## Funcionalidades
 - **Comunicação Segura:** Utilização de encriptação simétrica e assimétrica para garantir a confidencialidade das mensagens.
 - **Autenticação e Não Repúdio:** Implementação de MAC, hash, e mecanismos de geração de chaves para assegurar a autenticidade e integridade das mensagens.
-- **Gestão de Certificados:** Uso de uma Autoridade de Certificação para emitir e validar certificados digitais dos usuários.
+- **Gestão de Certificados:** Uso de uma Autoridade de Certificação para emitir e validar certificados digitais dos utilizadores.
 
 ## Arquitetura
 - O sistema é composto por um servidor central que encaminha as mensagens entre os usuários sem armazenar ou ter capacidade para descriptografar as mensagens.
