@@ -35,17 +35,8 @@ As contribuições para este projeto são geridas através de pull requests no G
 ## Código de Ética
 Espera-se que todos os contribuidores sigam os mais altos padrões de honestidade acadêmica. Qualquer ideia ou código que não seja original do aluno deve ser adequadamente citado.
 
-## Licença
-[Inserir detalhes da licença aqui]
-
 ## Autores
-- Nome do aluno 1
-- Nome do aluno 2
-- Nome do aluno 3
-- ...
-
-## Agradecimentos
-- Professores da disciplina
-- Contribuidores externos
-- ...
+- João Pedro Abreu 2081421
+- Carlos Coelho 2078221
+- Rircado Vieira 2126921
 
