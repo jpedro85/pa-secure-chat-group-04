@@ -11,7 +11,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-
 public class FileLogger implements Logger, AutoCloseable {
     private String filePath;
     private BlockingQueue<String> logQueue = new LinkedBlockingQueue<>();
@@ -22,6 +21,14 @@ public class FileLogger implements Logger, AutoCloseable {
         this.filePath = filePath;
         loggingThread = new Thread(this::processLogQueue);
         loggingThread.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                this.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }));
     }
 
     @Override

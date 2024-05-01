@@ -53,18 +53,10 @@ class LoggerBuilderTest {
     }
 
     @Test
-    void useFileLoggingShouldAddFileLoggerToComposite() throws IOException {
+    void useFileLoggingShouldAddFileLoggerToComposite() throws IOException, InterruptedException {
         String filePath = "log.txt";
         loggerBuilder.useFileLogging(filePath);
         verify(compositeLogger).addLogger(any(FileLogger.class));
-
-        Path logFilePath = Paths.get(filePath);
-        try {
-            Files.deleteIfExists(logFilePath);
-        } catch (IOException e) {
-            System.err.println("Failed to delete the log file: " + e.getMessage());
-            throw e;
-        }
     }
 
     @Test
