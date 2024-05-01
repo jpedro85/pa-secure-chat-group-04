@@ -26,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class IniFileReaderTest {
 
     private static String testFilePath = "testConfig.ini";
+    private static String invalidFormatPath = "invalidFormat.ini";
     private File configFile;
 
     @BeforeAll
@@ -42,7 +43,8 @@ class IniFileReaderTest {
     @AfterAll
     static void cleanUp() throws IOException {
 
-        Files.delete( Paths.get(testFilePath) );
+        Files.delete(Paths.get(testFilePath));
+        Files.deleteIfExists(Paths.get(invalidFormatPath));
     }
 
     @Test

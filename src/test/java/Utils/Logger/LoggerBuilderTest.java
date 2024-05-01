@@ -43,7 +43,6 @@ class LoggerBuilderTest {
 
     @AfterEach
     void tearDown() {
-        // Resetting the mock to ensure no leftover interactions affect other tests
         Mockito.reset(compositeLogger);
     }
 
@@ -54,12 +53,11 @@ class LoggerBuilderTest {
     }
 
     @Test
-    void useFileLoggingShouldAddFileLoggerToComposite() throws IOException{
+    void useFileLoggingShouldAddFileLoggerToComposite() throws IOException {
         String filePath = "log.txt";
         loggerBuilder.useFileLogging(filePath);
         verify(compositeLogger).addLogger(any(FileLogger.class));
 
-        // Cleanup the file after the test
         Path logFilePath = Paths.get(filePath);
         try {
             Files.deleteIfExists(logFilePath);

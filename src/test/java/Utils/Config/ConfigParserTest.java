@@ -64,15 +64,4 @@ class ConfigParserTest {
                 "Expected to throw due to invalid integer value.");
     }
 
-    @AfterAll
-    public static void cleanFiles()
-    {
-        Path logFilePath = Paths.get("invalidFormat.ini");
-        try {
-            Files.deleteIfExists(logFilePath);
-        } catch (IOException e) {
-            System.err.println("Failed to delete the log file: " + e.getMessage());
-            throw new RuntimeException(e);
-        }
-    }
 }
