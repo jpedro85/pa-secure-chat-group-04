@@ -1,17 +1,18 @@
 package Utils.Logger;
 
+import Utils.Logger.Decorator.*;
+import Utils.Logger.Strategies.*;
+import org.junit.jupiter.api.*;
+import org.mockito.Mockito;
+
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-import Utils.Logger.Decorator.LogTypeDecorator;
-import Utils.Logger.Decorator.PlainTextDecorator;
-import Utils.Logger.Decorator.TimeStampDecorator;
-import Utils.Logger.Decorator.UpperCaseDecorator;
-import Utils.Logger.Strategies.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +28,6 @@ class LoggerBuilderTest {
         loggerBuilder = new LoggerBuilder();
         loggers = new ArrayList<>();
 
-
         Field compositeLoggerField = LoggerBuilder.class.getDeclaredField("compositeLogger");
         compositeLoggerField.setAccessible(true);
         compositeLoggerField.set(loggerBuilder, compositeLogger);
@@ -41,6 +41,11 @@ class LoggerBuilderTest {
         }).when(compositeLogger).addLogger(any(Logger.class));
     }
 
+    @AfterEach
+    void tearDown() {
+        // Resetting the mock to ensure no leftover interactions affect other tests
+        Mockito.reset(compositeLogger);
+    }
 
     @Test
     void useConsoleLoggingShouldAddConsoleLoggerToComposite() {
@@ -49,22 +54,34 @@ class LoggerBuilderTest {
     }
 
     @Test
-    void useFileLoggingShouldAddFileLoggerToComposite() {
+    void useFileLoggingShouldAddFileLoggerToComposite() throws IOException{
         String filePath = "log.txt";
         loggerBuilder.useFileLogging(filePath);
         verify(compositeLogger).addLogger(any(FileLogger.class));
+
+        // Cleanup the file after the test
+        Path logFilePath = Paths.get(filePath);
+        try {
+            Files.deleteIfExists(logFilePath);
+        } catch (IOException e) {
+            System.err.println("Failed to delete the log file: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Test
-    void addTimeStampShouldWrapCurrentLoggerWithTimeStampDecorator() throws IllegalAccessException, NoSuchFieldException {
+    void addTimeStampShouldWrapCurrentLoggerWithTimeStampDecorator()
+            throws IllegalAccessException, NoSuchFieldException {
         loggerBuilder.useConsoleLogging();
         loggerBuilder.addTimeStamp();
 
         Logger lastLogger = compositeLogger.getLoggers().get(compositeLogger.getLoggers().size() - 1);
         assertInstanceOf(TimeStampDecorator.class, lastLogger, "Logger should be wrapped by TimeStampDecorator");
     }
+
     @Test
-    void addUpperCaseShouldWrapCurrentLoggerWithUpperCaseDecorator() throws IllegalAccessException, NoSuchFieldException {
+    void addUpperCaseShouldWrapCurrentLoggerWithUpperCaseDecorator()
+            throws IllegalAccessException, NoSuchFieldException {
         loggerBuilder
                 .useConsoleLogging()
                 .addUpperCase();
@@ -82,6 +99,7 @@ class LoggerBuilderTest {
         Logger lastLogger = compositeLogger.getLoggers().get(compositeLogger.getLoggers().size() - 1);
         assertInstanceOf(LogTypeDecorator.class, lastLogger, "Logger should be wrapped by LogTypeDecorator");
     }
+
     @Test
     void asPlainTextdWrapCurrentLoggerWithPlainTextDecorator() throws IllegalAccessException, NoSuchFieldException {
         loggerBuilder
@@ -91,7 +109,6 @@ class LoggerBuilderTest {
         Logger lastLogger = compositeLogger.getLoggers().get(compositeLogger.getLoggers().size() - 1);
         assertInstanceOf(PlainTextDecorator.class, lastLogger, "Logger should be wrapped by PlainTextDecorator");
     }
-
 
     @Test
     void buildShouldReturnCompositeLogger() {

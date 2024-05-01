@@ -1,5 +1,6 @@
 # Created by https://www.toptal.com/developers/gitignore/api/java,intellij,windows,linux,macos,eclipse
 # Edit at https://www.toptal.com/developers/gitignore?templates=java,intellij,windows,linux,macos,eclipse
+target/
 .idea
 ### Eclipse ###
 .metadata
