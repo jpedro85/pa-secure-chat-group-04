@@ -2,10 +2,7 @@ package Networks;
 
 import Utils.Concurrency.VarSync;
 import Utils.Config.Config;
-import Utils.Message.Contents.ContentFactory;
-import Utils.Message.Contents.ErrorContent;
-import Utils.Message.Contents.LogInContent;
-import Utils.Message.Contents.RegisterContent;
+import Utils.Message.Contents.*;
 import Utils.Message.EnumTypes.AccountMessageTypes;
 import Utils.Message.Message;
 
@@ -125,7 +122,9 @@ public class Server extends Thread
             {
                 case ACCOUNT -> { HandleAccountMessages( message ); }
 
-                case ERROR -> { /*coms*/ }
+                case ERROR -> {
+                    System.out.println("ERROR FROM CLIENT");
+                }
 
                 default -> { RedirectMessage( message ); }
             }
@@ -152,15 +151,11 @@ public class Server extends Thread
 
             if ( message.getRecipient().isBlank() )
             {
-                    broadcast( message );
+                broadcast( message );
             }
             else
             {
-
-
-                ErrorContent errorContent = (ErrorContent)ContentFactory.createErrorContent( message.getContent() ,"Invalid recipient");
-                /* TODO:log */
-                new Message( "Server", user.getUsername() , errorContent);
+                sendError( message.getContent(), "Invalid recipient" );
             }
 
         }
@@ -176,9 +171,7 @@ public class Server extends Thread
                         continue;
 
                     connectedUser = entry.getValue();
-                    connectedUser.lock();
-                    connectedUser.asyncGet().CLIENT_OUTPUT_STREAM.writeObject( message );
-                    connectedUser.unlock();
+                    sendDirectMessage( connectedUser, message );
                 }
             }
             catch (Exception e)
@@ -193,6 +186,19 @@ public class Server extends Thread
             try
             {
                 VarSync<ClientHandler> connectedUser = connectedUsers.get( message.getRecipient() );
+                sendDirectMessage( connectedUser, message );
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException( e );
+                /*TODO:log*/
+            }
+        }
+
+        private void sendDirectMessage( VarSync<ClientHandler> connectedUser, Message message )
+        {
+            try
+            {
 
                 connectedUser.lock();
                 connectedUser.asyncGet().CLIENT_OUTPUT_STREAM.writeObject( message );
@@ -209,7 +215,14 @@ public class Server extends Thread
         /*TODO:ADD Integrity to digest*/
         private void register( RegisterContent content )
         {
-            user = new User( content.getStringMessage() );
+            if ( connectedUsers.containsKey( content.getStringMessage() ) )
+            {
+                sendError( content , "Username already is registered " );
+            }
+            else
+            {
+                user = new User( content.getStringMessage() );
+            }
         }
 
         private void logIn( LogInContent content )
@@ -225,19 +238,23 @@ public class Server extends Thread
             }
             else
             {
-
-                ErrorContent sendContent = (ErrorContent)ContentFactory.createErrorContent( content,"User is not registered ");
-                /*TODO:log*/
-                try
-                {
-                    CLIENT_OUTPUT_STREAM.writeObject( new Message( "Server", "Sender", sendContent ) );
-                }
-                catch (IOException e)
-                {
-                    throw new RuntimeException(e);
-                }
+                sendError( content , "User is not registered" );
             }
 
+        }
+
+        private void sendError(MessageContent content, String error )
+        {
+            ErrorContent sendContent = (ErrorContent)ContentFactory.createErrorContent( content, error );
+            /*TODO:log*/
+            try
+            {
+                CLIENT_OUTPUT_STREAM.writeObject( new Message( "Server", "Sender", sendContent ) );
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         public void logOut()
