@@ -52,7 +52,7 @@ public class CustomCertificate implements Serializable {
 
     /**
      * Sets the subject of the certificate.
-     * */
+     */
     public String getSubject() {
         return subject;
     }
@@ -148,4 +148,5 @@ public class CustomCertificate implements Serializable {
     public boolean isValid() {
         return new Date().after(validFrom) && new Date().before(validTo);
     }
+
 }
