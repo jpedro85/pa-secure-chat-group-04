@@ -51,15 +51,13 @@ public class ConfigParser {
 
         Config config = new Config();
 
-        validateSectionExists(configFile, "server");
-        config.setServerAmount(parseInteger(configFile, "server", "serverAmount"));
-        config.setTaskPoolSize(parseInteger(configFile, "server", "taskPoolSize"));
-        config.setStartPort(parseInteger(configFile, "server", "startPort"));
-        config.setMaxServersNumber(parseInteger(configFile, "server", "maxServers"));
+        validateSectionExists(configFile, "ports");
+        config.setCaServerPort(parseInteger(configFile, "ports", "ServerCAPort"));
+        config.setMsgServerPort(parseInteger(configFile, "ports", "ServerMSGPort"));
 
-        validateSectionExists(configFile, "image");
-        config.setColumns(parseInteger(configFile, "image", "columns"));
-        config.setRows(parseInteger(configFile, "image", "rows"));
+
+        validateSectionExists(configFile, "certificate");
+        config.setCertificateValidityPeriod(parseInteger(configFile, "certificate", "CertificateValidityPeriod"));
 
         return config;
     }

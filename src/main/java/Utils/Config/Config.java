@@ -16,12 +16,10 @@ import java.nio.file.Paths;
  * </p>
  */
 public class Config {
-    private int serverAmount;
-    private int taskPoolSize;
-    private int columns;
-    private int rows;
-    private int startPort;
-    private int maxServersNumber;
+    private int msgServerPort;
+    private int caServerPort;
+    private int certificateValidityPeriod;
+    private final String savePath = Paths.get("src", "results").toString();
 
     /**
      * Creates a new instance of {@code Config} with default values. This
@@ -41,119 +39,61 @@ public class Config {
      * sources.
      * </p>
      */
-    public Config() {
+    public Config() {}
+
+    /**
+     * Gets the message server port where the server is to be hosted on.
+     *
+     * @return message server port
+     */
+    public int getMsgServerPort() {
+        return msgServerPort;
+    }
+
+
+    /**
+     * Sets the message server port where the server is to be hosted on.
+     *
+     * @param msgServerPort the message server port to set
+     */
+    public void setMsgServerPort(int msgServerPort) {
+        this.msgServerPort = msgServerPort;
     }
 
     /**
-     * Sets the configured beginning port;
+     * Gets the CA (Certificate Authority) server port.
      *
-     * @param maxServersNumber The beginning port.
+     * @return the CA server port
      */
-    public void setMaxServersNumber(int maxServersNumber) {
-        this.maxServersNumber = maxServersNumber;
+    public int getCaServerPort() {
+        return caServerPort;
     }
 
     /**
-     * Gets the configured the maximum number of servers.
+     * Sets the CA (Certificate Authority) server port.
      *
-     * @return The Max amount of servers
+     * @param caServerPort the CA server port to set
      */
-    public int getMaxServersNumber() {
-        return maxServersNumber;
-    }
-
-    private final String savePath = Paths.get("src", "results").toString();
-
-    /**
-     * Sets the configured beginning port;
-     *
-     * @param beginPort The beginning port.
-     */
-    public void setStartPort(int beginPort) {
-        this.startPort = beginPort;
+    public void setCaServerPort(int caServerPort) {
+        this.caServerPort = caServerPort;
     }
 
     /**
-     * Gets the configured beginning port;
+     * Gets the validity period of certificates in seconds.
      *
-     * @return The amount of servers configured.
+     * @return the certificate validity period in seconds
      */
-    public int getStartPort() {
-        return startPort;
+    public int getCertificateValidityPeriod() {
+        return certificateValidityPeriod;
     }
 
     /**
-     * Gets the configured amount of servers to be used by the system.
+     * Sets the validity period of certificates in seconds.
      *
-     * @return The amount of servers configured.
+     * @param certificateValidityPeriod the certificate validity period to set, in seconds
      */
-    public int getServerAmount() {
-        return serverAmount;
-    }
-
-    /**
-     * Sets the amount of servers that the system should use.
-     *
-     * @param serverAmount The amount of servers.
-     */
-    public void setServerAmount(int serverAmount) {
-        this.serverAmount = serverAmount;
-    }
-
-    /**
-     * Gets the size of the task pool, which determines the number of tasks
-     * that can be processed concurrently.
-     *
-     * @return The task pool size.
-     */
-    public int getTaskPoolSize() {
-        return taskPoolSize;
-    }
-
-    /**
-     * Sets the amount of executors for the task pool for concurrent task
-     * processing.
-     *
-     * @param taskPoolSize The size of the task pool.
-     */
-    public void setTaskPoolSize(int taskPoolSize) {
-        this.taskPoolSize = taskPoolSize;
-    }
-
-    /**
-     * Gets the number of columns the image is going to be divided.
-     *
-     * @return The number of columns.
-     */
-    public int getColumns() {
-        return columns;
-    }
-
-    /**
-     * Sets the number of columns the image is going to be divided.
-     *
-     * @param columns The number of columns.
-     */
-    public void setColumns(int columns) {
-        this.columns = columns;
-    }
-
-    /**
-     * Gets the number of rows the image is going to be divided.
-     *
-     * @return The number of rows.
-     */
-    public int getRows() {
-        return rows;
-    }
-
-    /**
-     * Sets the number of rows number of rows the image is going to be divided.
-     *
-     * @param rows The number of rows.
-     */
-    public void setRows(int rows) {
-        this.rows = rows;
+    public void setCertificateValidityPeriod(int certificateValidityPeriod) {
+        this.certificateValidityPeriod = certificateValidityPeriod;
     }
 
     /**
