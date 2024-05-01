@@ -44,7 +44,7 @@ class IniFileReaderTest {
     static void cleanUp() throws IOException {
 
         Files.delete(Paths.get(testFilePath));
-        Files.deleteIfExists(Paths.get(invalidFormatPath));
+        Files.delete(Paths.get(invalidFormatPath));
     }
 
     @Test
@@ -80,7 +80,6 @@ class IniFileReaderTest {
             // Write the content to the file
             writer.write(fileContent);
             System.out.println("File created successfully.");
-            writer.close();
         } catch (IOException e) {
             System.out.println("An error occurred while creating the file: " + e.getMessage());
         }
