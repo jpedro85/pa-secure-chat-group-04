@@ -15,7 +15,7 @@ public class CustomCertificate implements Serializable {
     private String subject;                     // The subject of the certificate
     private Date validFrom;                     // The start date of certificate validity
     private Date validTo;                       // The end date of certificate validity
-    private int serialNumber;                   // The unique serial number of the certificate
+    private final int serialNumber;                   // The unique serial number of the certificate
     private byte[] signature;                   // The digital signature of the certificate
     private static int serialNumberCount = 0;   // Counter for generating serial numbers
 

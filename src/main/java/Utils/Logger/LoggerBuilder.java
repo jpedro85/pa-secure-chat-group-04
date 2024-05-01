@@ -4,7 +4,7 @@ import Utils.Logger.Decorator.*;
 import Utils.Logger.Strategies.*;
 
 public class LoggerBuilder {
-    private CompositeLogger compositeLogger = new CompositeLogger();
+    private final CompositeLogger compositeLogger = new CompositeLogger();
     private Logger currentLogger = null;
 
     public LoggerBuilder useConsoleLogging() {

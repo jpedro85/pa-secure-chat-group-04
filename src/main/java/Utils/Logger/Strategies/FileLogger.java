@@ -12,10 +12,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FileLogger implements Logger, AutoCloseable {
-    private String filePath;
-    private BlockingQueue<String> logQueue = new LinkedBlockingQueue<>();
-    private AtomicBoolean isDisposed = new AtomicBoolean(false);
-    private Thread loggingThread;
+    private final String filePath;
+    private final BlockingQueue<String> logQueue = new LinkedBlockingQueue<>();
+    private final AtomicBoolean isDisposed = new AtomicBoolean(false);
+    private final Thread loggingThread;
 
     public FileLogger(String filePath) {
         this.filePath = filePath;

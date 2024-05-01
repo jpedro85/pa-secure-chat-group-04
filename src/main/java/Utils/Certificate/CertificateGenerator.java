@@ -7,10 +7,26 @@ import java.util.Date;
  * Utility class for generating custom certificates with ease.
  * This class provides a fluent API for setting various properties of the
  * certificate.
+ *
+ * Example usage:
+ *
+ * <pre>{@code
+ * CertificateGenerator generator = new CertificateGenerator()
+ *         .forSubject("example.com")
+ *         .issuedBy("Certificate Authority")
+ *         .validFrom(new Date())
+ *         .validTo(new Date(System.currentTimeMillis() + 365 * 24 * 60 * 60 * 1000L)) // Valid for 1 year
+ *         .withPublicKey(publicKey)
+ *         .generate();
+ * }</pre>
+ *
+ * This example demonstrates how to generate a custom certificate with specified
+ * properties.
+ *
  */
 public class CertificateGenerator {
 
-    private CustomCertificate customCertificate; // The custom certificate being generated
+    private final CustomCertificate customCertificate; // The custom certificate being generated
 
     /**
      * Constructs a new CertificateGenerator and initializes a CustomCertificate
