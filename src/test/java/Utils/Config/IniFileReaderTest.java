@@ -44,7 +44,6 @@ class IniFileReaderTest {
     static void cleanUp() throws IOException {
 
         Files.delete(Paths.get(testFilePath));
-        Files.delete(Paths.get(invalidFormatPath));
     }
 
     @Test
@@ -116,7 +115,6 @@ class IniFileReaderTest {
         service.awaitTermination(1, TimeUnit.MINUTES);
 
         assertEquals(1, instances.size(), "Multiple instances were created in a multithreaded environment.");
-
     }
 
 }
