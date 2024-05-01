@@ -10,21 +10,19 @@ import java.util.Date;
  */
 public class CustomCertificate implements Serializable {
 
-    private PublicKey publicKey;                // The public key associated with the certificate
-    private String issuer;                      // The entity that issued the certificate
-    private String subject;                     // The subject of the certificate
-    private Date validFrom;                     // The start date of certificate validity
-    private Date validTo;                       // The end date of certificate validity
-    private final int serialNumber;                   // The unique serial number of the certificate
-    private byte[] signature;                   // The digital signature of the certificate
-    private static int serialNumberCount = 0;   // Counter for generating serial numbers
+    private PublicKey publicKey; // The public key associated with the certificate
+    private String issuer; // The entity that issued the certificate
+    private String subject; // The subject of the certificate
+    private Date validFrom; // The start date of certificate validity
+    private Date validTo; // The end date of certificate validity
+    private final int serialNumber; // The unique serial number of the certificate
+    private byte[] signature; // The digital signature of the certificate
 
     /**
      * Constructs a new CustomCertificate object with a unique serial number.
      */
     public CustomCertificate() {
-        this.serialNumber = serialNumberCount;
-        serialNumberCount++;
+        this.serialNumber = SerialNumberGenerator.getNextSerialNumber();
     }
 
     /**
@@ -37,6 +35,13 @@ public class CustomCertificate implements Serializable {
     }
 
     /**
+     * Sets the issuer of the certificate.
+     */
+    public String getIssuer() {
+        return issuer;
+    }
+
+    /**
      * Sets the subject of the certificate.
      *
      * @param subject The subject of the certificate.
@@ -46,12 +51,26 @@ public class CustomCertificate implements Serializable {
     }
 
     /**
+     * Sets the subject of the certificate.
+     * */
+    public String getSubject() {
+        return subject;
+    }
+
+    /**
      * Sets the validity end date of the certificate.
      *
      * @param validTo The end date of certificate validity.
      */
     public void setValidTo(Date validTo) {
         this.validTo = validTo;
+    }
+
+    /**
+     * Gets the validity end date of the certificate.
+     */
+    public Date getValidTo() {
+        return validTo;
     }
 
     /**
@@ -82,6 +101,13 @@ public class CustomCertificate implements Serializable {
     }
 
     /**
+     * Sets the validity start date of the certificate.
+     */
+    public Date getValidFrom() {
+        return validFrom;
+    }
+
+    /**
      * Sets the digital signature of the certificate.
      *
      * @param signature The digital signature of the certificate.
@@ -100,6 +126,15 @@ public class CustomCertificate implements Serializable {
     }
 
     /**
+     * Retrieves the associated with the certificated.
+     *
+     * @return The serial number associated with the certificated.
+     */
+    public int getSerialNumber() {
+        return serialNumber;
+    }
+
+    /**
      * Generates and retrieves the concatenated data of the certificate.
      * This data is used for creating the digital signature.
      *
@@ -110,4 +145,7 @@ public class CustomCertificate implements Serializable {
                 .getBytes();
     }
 
+    public boolean isValid() {
+        return new Date().after(validFrom) && new Date().before(validTo);
+    }
 }
