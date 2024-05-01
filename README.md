@@ -27,7 +27,7 @@ Todas as configurações necessárias para o funcionamento do projeto devem ser 
 
 ## Testes e Documentação
 - Testes de integração devem ser realizados utilizando a biblioteca JaCoCo para relatório de code coverage.
-- Documentação deve ser gerada utilizando Javadoc e armazenada no repositório.
+- Documentação deve ser gerada utilizando Javadoc e armazenada no repositório. A mesma também encontra-se disponivel atraves do serviço [github-pages](https://jpedro85.github.io/pa-secure-chat-group-04/)
 
 ## Contribuições
 As contribuições para este projeto são geridas através de pull requests no GitHub. Cada contribuição será avaliada individualmente para garantir que cumpre os requisitos de segurança e funcionalidade.
