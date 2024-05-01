@@ -14,23 +14,14 @@ public class LogTypeDecorator extends LoggerDecorator {
 
     @Override
     public void log(String message, Optional<LogTypes> type) {
-        ColorSchemes color = ColorSchemes.GRAY;
+        ColorSchemes color;
         if (type.isPresent()) {
-            switch (type.get()) {
-                case WARN:
-                    color = ColorSchemes.ORANGE;
-                    break;
-                case ERROR:
-                    color = ColorSchemes.RED;
-                    break;
-                case DEBUG:
-                    color = ColorSchemes.BLUE;
-                    break;
-                case INFO:
-                default:
-                    color = ColorSchemes.GRAY;
-                    break;
-            }
+            color = switch (type.get()) {
+                case WARN -> ColorSchemes.ORANGE;
+                case ERROR -> ColorSchemes.RED;
+                case DEBUG -> ColorSchemes.BLUE;
+                default -> ColorSchemes.GRAY;
+            };
             message = color.toString() + "[" + type.get() + "] " + ColorSchemes.RESET + message;
         }
         super.log(message, type);

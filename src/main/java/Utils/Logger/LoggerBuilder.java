@@ -51,7 +51,7 @@ public class LoggerBuilder {
         return this;
     }
 
-    private void replaceLastLogger(Logger newLogger) {
+    void replaceLastLogger(Logger newLogger) {
         int lastIndex = compositeLogger.getLoggers().size() - 1;
         compositeLogger.getLoggers().set(lastIndex, newLogger);
     }
