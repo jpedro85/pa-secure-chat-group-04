@@ -1,6 +1,6 @@
 package Utils.Message;
 
-import Utils.Message.Contents.IMessageContent;
+import Utils.Message.Contents.MessageContent;
 
 import java.io.Serializable;
 
@@ -11,12 +11,13 @@ public class Message implements Serializable
 
     private final String RECIPIENT;
 
-    private IMessageContent content;
+    private final MessageContent CONTENT;
 
-    public Message(String sender, String recipient, IMessageContent content)
+    public Message(String sender, String recipient, MessageContent content)
     {
         this.SENDER = sender;
         this.RECIPIENT = recipient;
+        this.CONTENT = content;
     }
 
     public String getSender()
@@ -27,6 +28,11 @@ public class Message implements Serializable
     public String getRecipient()
     {
         return RECIPIENT;
+    }
+
+    public MessageContent getContent()
+    {
+        return CONTENT;
     }
 
 }

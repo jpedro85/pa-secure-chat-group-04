@@ -44,7 +44,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>Main</mainClass>
+                            <mainClass>MainClient</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -55,7 +55,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.0.0</version>
                 <configuration>
-                    <mainClass>Main</mainClass> <!-- Replace Main with your fully qualified main
+                    <mainClass>MainClient</mainClass> <!-- Replace MainClient with your fully qualified main
                     class name -->
                 </configuration>
                 <executions>
