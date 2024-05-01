@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public class CompositeLogger implements Logger {
 
-    private List<Logger> loggers = new ArrayList<>();
+    private final List<Logger> loggers = new ArrayList<>();
 
     public List<Logger> getLoggers() {
         return loggers;

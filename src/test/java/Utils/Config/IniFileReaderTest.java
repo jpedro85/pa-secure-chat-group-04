@@ -25,8 +25,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS) // Add this annotation
 class IniFileReaderTest {
 
-    private static String testFilePath = "testConfig.ini";
-    private static String invalidFormatPath = "invalidFormat.ini";
+    private static final String testFilePath = "testConfig.ini";
+    private static final String invalidFormatPath = "invalidFormat.ini";
     private File configFile;
 
     @BeforeAll

@@ -22,7 +22,7 @@ public class LogTypeDecorator extends LoggerDecorator {
                 case DEBUG -> ColorSchemes.BLUE;
                 default -> ColorSchemes.GRAY;
             };
-            message = color.toString() + "[" + type.get() + "] " + ColorSchemes.RESET + message;
+            message = color + "[" + type.get() + "] " + ColorSchemes.RESET + message;
         }
         super.log(message, type);
     }
