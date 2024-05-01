@@ -7,21 +7,21 @@ import Utils.Message.EnumTypes.ContentSubtype;
 public class RegisterContent implements MessageContent
 {
     private final ContentSubtype type;
-    private final String userName;
+    private final String USERNAME;
 
     public RegisterContent( String userName ){
-        this.userName = userName;
+        this.USERNAME = userName;
         type = AccountMessageTypes.REGISTER;
     }
 
     @Override
     public byte[] getByteMessage() {
-        return userName.getBytes();
+        return USERNAME.getBytes();
     }
 
     @Override
     public String getStringMessage() {
-        return userName;
+        return USERNAME;
     }
 
     @Override

@@ -7,7 +7,7 @@ public class User {
     private String certificate;
 
     public User(String username) {
-        username = username;
+        this.username = username;
     }
 
     public String getUsername() {

@@ -21,7 +21,7 @@ public class ContentFactory
     {
         return new RegisterContent( username );
     }
-    public static MessageContent createLoginContent (CertificateChange certificate, String username)
+    public static MessageContent createLoginContent (String certificate, String username)
     {
         return new LogInContent( certificate , username);
     }

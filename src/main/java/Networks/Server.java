@@ -2,6 +2,8 @@ package Networks;
 
 import Utils.Concurrency.VarSync;
 import Utils.Config.Config;
+import Utils.Logger.Enums.LogTypes;
+import Utils.Logger.Logger;
 import Utils.Message.Contents.*;
 import Utils.Message.EnumTypes.AccountMessageTypes;
 import Utils.Message.Message;
@@ -13,21 +15,27 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends Thread
 {
 
     private final ServerSocket SOCKET;
+    private final Logger LOGGER;
     private VarSync<Boolean> isServerRunning;
     private ConcurrentHashMap< String, VarSync<ClientHandler> > connectedUsers;
     private VarSync< ArrayList<ClientHandler> > activeClientHandler;
+    private VarSync< ArrayList<String> > registeredUsernames;
 
-    public Server(Config config) throws IOException
+    public Server(Config config , Logger logger) throws IOException
     {
-        SOCKET = new ServerSocket( config.getServerPort() );
+        LOGGER = logger;
+        SOCKET = new ServerSocket( config.getMsgServerPort() );
         connectedUsers = new ConcurrentHashMap<>();
         activeClientHandler = new VarSync<>( new ArrayList<>(5) );
+        registeredUsernames = new VarSync<>( new ArrayList<>(5) );
+        isServerRunning = new VarSync<>(false);
     }
 
     @Override
@@ -40,17 +48,23 @@ public class Server extends Thread
     @Override
     public void run()
     {
+        LOGGER.log("Server started listening!", Optional.of(LogTypes.INFO) );
         Socket client;
         while( isServerRunning.syncGet() )
         {
-            try {
+            try
+            {
                 client =  SOCKET.accept();
+                LOGGER.log( "Client Connected", Optional.of(LogTypes.INFO) );
+                ClientHandler clientHandler = new ClientHandler( client );
                 activeClientHandler.lock();
-                activeClientHandler.asyncGet().add( new ClientHandler( client ) );
+                activeClientHandler.asyncGet().add( clientHandler );
                 activeClientHandler.unlock();
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                clientHandler.start();
+            }
+            catch (IOException e)
+            {
+                LOGGER.log("Client disconnected reason: " + e.getMessage(), Optional.of(LogTypes.WARN) );
             }
         }
     }
@@ -85,12 +99,15 @@ public class Server extends Thread
 
         private VarSync<Boolean> isRunning;
 
+        private final VarSync<ClientHandler> LOCK;
+
         public ClientHandler( Socket clientConnection ) throws IOException
         {
             CLIENT_CONNECTION = clientConnection;
             CLIENT_INPUT_STREAM = new ObjectInputStream( CLIENT_CONNECTION.getInputStream ( ) );
             CLIENT_OUTPUT_STREAM = new ObjectOutputStream( CLIENT_CONNECTION.getOutputStream ( ) );
             isRunning = new VarSync<>(false);
+            LOCK = new VarSync<>(this);
         }
 
         @Override
@@ -112,7 +129,7 @@ public class Server extends Thread
                 }
 
             } catch (Exception e) {
-                throw new RuntimeException( e.getMessage() );
+                LOGGER.log("Client disconnected reason: " + e.getMessage(), Optional.of(LogTypes.WARN) );
             }
         }
 
@@ -141,7 +158,7 @@ public class Server extends Thread
 
                 case LOGOUT -> { logOut() ; }
 
-                default -> { throw new RuntimeException("InvalidContentType"); /*TODO:log*/ }
+                default -> { throw new RuntimeException("InvalidContentType"); }
 
             }
 
@@ -176,23 +193,14 @@ public class Server extends Thread
             }
             catch (Exception e)
             {
-                throw new RuntimeException( e );
-                /*TODO:log*/
+                LOGGER.log( e.getMessage() , Optional.of(LogTypes.ERROR) );
             }
         }
 
         private void sendDirectMessage( Message message )
         {
-            try
-            {
-                VarSync<ClientHandler> connectedUser = connectedUsers.get( message.getRecipient() );
-                sendDirectMessage( connectedUser, message );
-            }
-            catch (Exception e)
-            {
-                throw new RuntimeException( e );
-                /*TODO:log*/
-            }
+            VarSync<ClientHandler> connectedUser = connectedUsers.get( message.getRecipient() );
+            sendDirectMessage( connectedUser, message );
         }
 
         private void sendDirectMessage( VarSync<ClientHandler> connectedUser, Message message )
@@ -207,21 +215,25 @@ public class Server extends Thread
             }
             catch (Exception e)
             {
-                throw new RuntimeException( e );
-                /*TODO:log*/
+                LOGGER.log( e.getMessage() , Optional.of(LogTypes.ERROR) );
             }
         }
 
         /*TODO:ADD Integrity to digest*/
         private void register( RegisterContent content )
         {
-            if ( connectedUsers.containsKey( content.getStringMessage() ) )
+            registeredUsernames.lock();
+            if ( registeredUsernames.asyncGet().contains( content.getStringMessage() ) || connectedUsers.containsKey( content.getStringMessage() ) )
             {
+                registeredUsernames.unlock();
                 sendError( content , "Username already is registered " );
             }
             else
             {
                 user = new User( content.getStringMessage() );
+                registeredUsernames.asyncGet().add( user.getUsername() );
+                registeredUsernames.unlock();
+                sendConfirmation( new Message( "Server", user.getUsername(), ContentFactory.createTypeContent( AccountMessageTypes.REGISTER) ) );
             }
         }
 
@@ -230,11 +242,12 @@ public class Server extends Thread
             if(user != null)
             {
                 user.setCertificate( content.getCertificate() );
-                connectedUsers.put( user.getUsername() , new VarSync<>(this) );
+                connectedUsers.put( user.getUsername() , LOCK);
 
                 LogInContent sendContent = new LogInContent( user.getCertificate() , user.getUsername() );
 
                 broadcast( new Message( "Server", "", sendContent ) );
+                sendConfirmation( new Message( "Server", user.getUsername(), ContentFactory.createTypeContent( AccountMessageTypes.LOGIN) ) );
             }
             else
             {
@@ -246,10 +259,26 @@ public class Server extends Thread
         private void sendError(MessageContent content, String error )
         {
             ErrorContent sendContent = (ErrorContent)ContentFactory.createErrorContent( content, error );
-            /*TODO:log*/
+            LOGGER.log( error , Optional.of(LogTypes.ERROR) );
             try
             {
+                LOCK.lock();
                 CLIENT_OUTPUT_STREAM.writeObject( new Message( "Server", "Sender", sendContent ) );
+                LOCK.unlock();
+            }
+            catch (IOException e)
+            {
+                LOGGER.log( e.getMessage() , Optional.of(LogTypes.ERROR) );
+            }
+        }
+
+        private void sendConfirmation( Message message )
+        {
+            try
+            {
+                LOCK.lock();
+                CLIENT_OUTPUT_STREAM.writeObject( message );
+                LOCK.unlock();
             }
             catch (IOException e)
             {
@@ -276,7 +305,7 @@ public class Server extends Thread
             }
             catch (Exception e)
             {
-                /*TODO:LOG*/
+                LOGGER.log( e.getMessage() , Optional.of(LogTypes.ERROR) );
             }
         }
 
