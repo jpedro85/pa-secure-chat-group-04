@@ -1,4 +1,4 @@
-package Utils.Message.Contents;
+package Utils.Message.Contents.Interfaces;
 
 import Utils.Message.EnumTypes.ContentTypes;
 import Utils.Message.EnumTypes.ContentSubtype;

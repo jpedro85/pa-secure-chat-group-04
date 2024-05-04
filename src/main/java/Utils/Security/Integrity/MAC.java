@@ -2,6 +2,7 @@ package Utils.Security.Integrity;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -21,11 +22,19 @@ public class MAC {
      *
      * @throws Exception if the message MAC algorithm is not available
      */
-    public static byte[] generateMAC ( byte[] message , byte[] macKey ) throws Exception {
-        SecretKeySpec secretKeySpec = new SecretKeySpec ( macKey , MAC_ALGORITHM );
-        Mac mac = Mac.getInstance ( MAC_ALGORITHM );
-        mac.init ( secretKeySpec );
-        return mac.doFinal ( message );
+    public static byte[] generateMAC ( byte[] message , byte[] macKey )
+    {
+        try
+        {
+            SecretKeySpec secretKeySpec = new SecretKeySpec ( macKey , MAC_ALGORITHM );
+            Mac mac = Mac.getInstance ( MAC_ALGORITHM );
+            mac.init ( secretKeySpec );
+            return mac.doFinal ( message );
+        }
+        catch ( Exception e )
+        {
+            throw new RuntimeException( e );
+        }
     }
 
     /**

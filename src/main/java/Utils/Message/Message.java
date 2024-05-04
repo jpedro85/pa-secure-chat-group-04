@@ -1,6 +1,6 @@
 package Utils.Message;
 
-import Utils.Message.Contents.MessageContent;
+import Utils.Message.Contents.Interfaces.MessageContent;
 
 import java.io.Serializable;
 

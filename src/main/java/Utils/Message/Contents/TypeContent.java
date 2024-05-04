@@ -1,12 +1,13 @@
 package Utils.Message.Contents;
 
+import Utils.Message.Contents.Interfaces.MessageContent;
 import Utils.Message.EnumTypes.ContentTypes;
 import Utils.Message.EnumTypes.ContentSubtype;
 
-public class TypeContent< Type extends ContentSubtype> implements MessageContent
+public class TypeContent implements MessageContent
 {
-    private final Type Type;
-    public TypeContent( Type type )
+    private final ContentSubtype Type;
+    public TypeContent( ContentSubtype type )
     {
         this.Type = type;
     }
@@ -14,13 +15,13 @@ public class TypeContent< Type extends ContentSubtype> implements MessageContent
     @Override
     public byte[] getByteMessage()
     {
-        return new byte[0];
+        return getStringMessage().getBytes();
     }
 
     @Override
     public String getStringMessage()
     {
-        return new String();
+        return Type.toString();
     }
 
     @Override

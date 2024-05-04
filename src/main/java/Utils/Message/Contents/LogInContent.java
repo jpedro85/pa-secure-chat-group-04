@@ -1,9 +1,9 @@
 package Utils.Message.Contents;
 
+import Utils.Message.Contents.Interfaces.MessageContent;
 import Utils.Message.EnumTypes.AccountMessageTypes;
 import Utils.Message.EnumTypes.ContentTypes;
 import Utils.Message.EnumTypes.ContentSubtype;
-import Utils.Security.CertificateChange;
 
 public class LogInContent implements MessageContent
 {

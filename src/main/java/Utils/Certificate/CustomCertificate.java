@@ -140,7 +140,7 @@ public class CustomCertificate implements Serializable {
      *
      * @return The concatenated data of the certificate.
      */
-    private byte[] getCertificateData() {
+    public byte[] getCertificateData() {
         return (serialNumber + issuer + subject + validFrom.toString() + validTo.toString() + publicKey.toString())
                 .getBytes();
     }

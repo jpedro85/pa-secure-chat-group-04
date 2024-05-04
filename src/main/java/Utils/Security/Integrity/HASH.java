@@ -19,9 +19,17 @@ public class HASH {
      *
      * @throws Exception if the message digest algorithm is not available
      */
-    public static byte[] generateDigest ( byte[] message ) throws Exception {
-        MessageDigest messageDigest = MessageDigest.getInstance ( DIGEST_ALGORITHM );
-        return messageDigest.digest ( message );
+    public static byte[] generateDigest ( byte[] message )
+    {
+        try
+        {
+            MessageDigest messageDigest = MessageDigest.getInstance(DIGEST_ALGORITHM);
+            return messageDigest.digest(message);
+        }
+        catch ( Exception e )
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

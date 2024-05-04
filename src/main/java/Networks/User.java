@@ -1,8 +1,10 @@
 package Networks;
 
-public class User {
+import java.io.Serializable;
 
-    private String username;
+public class User implements Serializable 
+{
+    private final String username;
 
     private String certificate;
 
@@ -20,5 +22,10 @@ public class User {
 
     public void setCertificate(String certificate) {
         this.certificate = certificate;
+    }
+
+    @Override
+    public String toString() {
+        return username + certificate;
     }
 }

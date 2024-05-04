@@ -6,17 +6,18 @@ package Utils.Certificate;
  */
 public class CertificateEntry {
     
-    private String name;
-    private boolean approved;
+    private CustomCertificate CERTIFICATE;
+    private boolean approved ;
 
     /**
      * Constructs a CertificateEntry object with the specified name and approval status.
      *
-     * @param name     The name of the certificate.
+     * @param certificate The Certificate
      * @param approved The approval status of the certificate.
      */
-    public CertificateEntry(String name, boolean approved) {
-        this.name = name;
+    public CertificateEntry(CustomCertificate certificate, boolean approved)
+    {
+        this.CERTIFICATE = certificate;
         this.approved = approved;
     }
 
@@ -25,8 +26,9 @@ public class CertificateEntry {
      *
      * @return The name of the certificate.
      */
-    public String getName() {
-        return name;
+    public CustomCertificate getCertificate()
+    {
+        return CERTIFICATE;
     }
 
     /**
@@ -38,16 +40,12 @@ public class CertificateEntry {
         return approved;
     }
 
+
     /**
-     * Returns a string representation of the CertificateEntry object.
-     *
-     * @return A string representation of the CertificateEntry object.
+     * Revokes the certificate. This change can not be undone;
      */
-    @Override
-    public String toString() {
-        return "CertificateEntry{" +
-                "name='" + name + '\'' +
-                ", approved=" + approved +
-                '}';
+    public void revoke() {
+        approved = false;
     }
+
 }

@@ -1,5 +1,6 @@
 package Utils.Message.Contents;
 
+import Utils.Message.Contents.Interfaces.MessageContent;
 import Utils.Message.EnumTypes.ContentTypes;
 import Utils.Message.EnumTypes.ContentSubtype;
 
@@ -14,7 +15,7 @@ public class ErrorContent implements MessageContent
         this.ERROR = error;
     }
 
-    public MessageContent getContent()
+    public MessageContent getErrorContent()
     {
         return CONTENT;
     }

@@ -1,5 +1,7 @@
 package Utils.Message.Contents;
 
+import Utils.Message.Contents.Interfaces.MessageContent;
+import Utils.Message.Contents.Interfaces.MessageContentIntegrityHash;
 import Utils.Message.EnumTypes.AccountMessageTypes;
 import Utils.Message.EnumTypes.ContentTypes;
 import Utils.Message.EnumTypes.ContentSubtype;

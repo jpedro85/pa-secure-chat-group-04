@@ -1,4 +1,4 @@
-
+import Networks.CertificateAuthority;
 import Networks.Server;
 import Utils.Config.Config;
 import Utils.Config.ConfigParser;
@@ -7,16 +7,22 @@ import Utils.Logger.LoggerBuilder;
 
 import java.io.IOException;
 
-public class MainServers {
-
+public class MainCAServer
+{
     public static void main( String[] args )
     {
         Logger logger = createLogger();
         try
         {
             Config config = ConfigParser.getInstance().parseFromIniToConfig("Config.ini");
-            Server server = new Server( config ,logger );
-            server.start();
+            CertificateAuthority certificateAuthority = new CertificateAuthority( config ,logger );
+            certificateAuthority.start();
+
+            Runtime.getRuntime().addShutdownHook( new Thread(() -> {
+                // Perform cleanup actions here
+                cleanUp(certificateAuthority);
+            }));
+
         }
         catch (IOException e)
         {
@@ -24,6 +30,21 @@ public class MainServers {
         }
     }
 
+    private static void cleanUp( Server server )
+    {
+        try
+        {
+            System.out.println("Can not start program." );
+            server.close();
+            synchronized ( server )
+            {
+                while ( server.isAlive() ) server.wait();
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+    }
     private static Logger createLogger()
     {
         LoggerBuilder builder = new LoggerBuilder();
@@ -38,5 +59,4 @@ public class MainServers {
                 .build();
 
     }
-
 }
