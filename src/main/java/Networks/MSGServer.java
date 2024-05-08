@@ -22,7 +22,7 @@ public class MSGServer extends Server
     private ConcurrentHashMap< String, VarSync<ClientHandler> > connectedUsers;
     private VarSync< ArrayList<String> > registeredUsernames;
 
-    public MSGServer(Config config , Logger logger) throws IOException
+    public MSGServer(Config config , Logger logger)
     {
         super( config.getMsgServerPort(), logger );
 
@@ -31,7 +31,7 @@ public class MSGServer extends Server
     }
 
     @Override
-    protected void handleNewConnection(Socket connection) throws IOException
+    protected void handleNewConnection(Socket connection)
     {
         ClientHandler clientHandler = new ClientHandler( connection );
 
@@ -65,7 +65,6 @@ public class MSGServer extends Server
         @Override
         protected void handleRequest(Object object)
         {
-            LOGGER.log( "inhandle message",Optional.of(LogTypes.DEBUG));
             handleMessage( (Message)object );
         }
 
@@ -92,7 +91,7 @@ public class MSGServer extends Server
 
                 case LOGIN -> { logIn( (LogInContent) message.getContent() ); }
 
-                case LOGOUT -> { logOut() ; }
+                case LOGOUT -> { close(); }
 
                 default -> { throw new RuntimeException("InvalidContentType"); }
 
@@ -104,11 +103,13 @@ public class MSGServer extends Server
 
             if ( message.getRecipient().isBlank() )
             {
+                LOGGER.log( String.format( "BroadCasting Msg from %s.", message.getSender() ), Optional.of(LogTypes.INFO));
                 broadcast( message );
             }
             else
             {
-                sendError( message.getContent(), "Invalid recipient" );
+                LOGGER.log( String.format( "Redirection Msg type:%s from %s to %s", message.getContent().getSubType(), message.getSender() , message.getRecipient() ), Optional.of(LogTypes.INFO));
+                sendDirectMessage( message );
             }
 
         }
@@ -202,6 +203,7 @@ public class MSGServer extends Server
                 LogInContent sendContent = new LogInContent( user.getCertificate() , user.getUsername() );
                 broadcast( new Message( "Server", "", sendContent ) );
 
+                LOGGER.log("User logged in.",Optional.of(LogTypes.INFO));
             }
             else
             {
@@ -247,16 +249,23 @@ public class MSGServer extends Server
 
         public void logOut()
         {
-            connectedUsers.remove( user.getUsername() );
+            if( user != null && connectedUsers.containsKey( user.getUsername() ) )
+            {
+                connectedUsers.remove( user.getUsername() );
+                registeredUsernames.lock();
+                registeredUsernames.asyncGet().remove( user.getUsername() );
+                registeredUsernames.unlock();
+                broadcast(new Message( "Sever", "", ContentFactory.createLogoutContent( user.getUsername() ) ) );
+            }
+
         }
 
         @Override
         public void close()
         {
-            if( user != null && connectedUsers.containsKey( user.getUsername() ) )
-                logOut();
-
+            logOut();
             super.close();
+            LOGGER.log("User logged out.",Optional.of(LogTypes.INFO));
         }
     }
 

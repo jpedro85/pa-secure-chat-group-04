@@ -4,7 +4,7 @@ import Utils.Certificate.CertificateEntry;
 import Utils.Certificate.CustomCertificate;
 import Utils.Certificate.PEMCertificateEncoder;
 import Utils.Message.Contents.ContentFactory;
-import Utils.Message.Contents.DiffieHellmanContent;
+import Utils.Message.Contents.DiffieHellmanKeyChangeContent;
 import Utils.Message.Contents.Interfaces.MessageContent;
 import Utils.Message.Contents.IntegrityContent;
 import Utils.Config.Config;
@@ -101,7 +101,6 @@ public class CertificateAuthority extends Server{
         @Override
         protected void handleRequest(Object object)
         {
-            LOGGER.log( "inhandle message",Optional.of(LogTypes.DEBUG));
             handleMessage( (Message)object );
         }
 
@@ -133,7 +132,7 @@ public class CertificateAuthority extends Server{
         {
             switch ( (DiffieHellmanTypes)message.getContent().getSubType() )
             {
-                case KEY_CHANGE -> { handleDiffieHellmanKeyChange( (DiffieHellmanContent) message.getContent() ); }
+                case KEY_CHANGE -> { handleDiffieHellmanKeyChange( (DiffieHellmanKeyChangeContent) message.getContent() ); }
 
                 default -> {
                     LOGGER.log( "Server not prepared for receiving messages of type : " + message.getContent().getType().toString()
@@ -142,7 +141,7 @@ public class CertificateAuthority extends Server{
             }
         }
 
-        private void handleDiffieHellmanKeyChange( DiffieHellmanContent content )
+        private void handleDiffieHellmanKeyChange( DiffieHellmanKeyChangeContent content )
         {
             try
             {
@@ -159,10 +158,6 @@ public class CertificateAuthority extends Server{
                     CLIENT_OUTPUT_STREAM.writeObject(
                             new Message( "CA", "sender", ContentFactory.createErrorContent( content , "Received message has not valid digest" )  ) );
                 }
-            }
-            catch (NoSuchAlgorithmException e )
-            {
-                LOGGER.log( "Algorithm error " + e.getMessage() , Optional.of(LogTypes.ERROR) );
             }
             catch (IOException e)
             {

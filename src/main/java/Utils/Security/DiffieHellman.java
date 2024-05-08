@@ -16,11 +16,18 @@ public class DiffieHellman {
      *
      * @return the private key
      *
-     * @throws NoSuchAlgorithmException when the algorithm used to generate the key is not available
      */
-    public static BigInteger generatePrivateKey ( ) throws NoSuchAlgorithmException {
-        Random randomGenerator = SecureRandom.getInstance ( "SHA1PRNG" );
-        return new BigInteger ( NUM_BITS , randomGenerator );
+    public static BigInteger generatePrivateKey ( )
+    {
+        try
+        {
+            Random randomGenerator = SecureRandom.getInstance ( "SHA1PRNG" );
+            return new BigInteger ( NUM_BITS , randomGenerator );
+        }
+        catch ( NoSuchAlgorithmException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
