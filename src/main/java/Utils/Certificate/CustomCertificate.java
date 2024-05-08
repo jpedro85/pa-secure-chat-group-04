@@ -2,6 +2,7 @@ package Utils.Certificate;
 
 import java.io.Serializable;
 import java.security.*;
+import java.util.Arrays;
 import java.util.Date;
 
 /**
@@ -149,4 +150,16 @@ public class CustomCertificate implements Serializable {
         return new Date().after(validFrom) && new Date().before(validTo);
     }
 
+    @Override
+    public String toString() {
+        return "CustomCertificate{" +
+                "publicKey=" + publicKey +
+                ", issuer='" + issuer + '\'' +
+                ", subject='" + subject + '\'' +
+                ", validFrom=" + validFrom +
+                ", validTo=" + validTo +
+                ", serialNumber=" + serialNumber +
+                ", signature=" + Arrays.toString(signature) +
+                '}';
+    }
 }

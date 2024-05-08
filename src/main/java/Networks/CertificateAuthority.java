@@ -1,6 +1,7 @@
 package Networks;
 
 import Utils.Certificate.CertificateEntry;
+import Utils.Certificate.CertificateGenerator;
 import Utils.Certificate.CustomCertificate;
 import Utils.Certificate.PEMCertificateEncoder;
 import Utils.Message.Contents.ContentFactory;
@@ -302,15 +303,29 @@ public class CertificateAuthority extends Server{
                 return;
             }
 
-            certificate.setIssuer("CA");
-            certificate.setValidFrom( new Date() );
-            certificate.setValidTo( new Date(System.currentTimeMillis() + CONFIG.getCertificateValidityPeriod() * 1000L) );
+            certificate = signeCertificate( certificate );
 
-            byte[] digest = HASH.generateDigest( certificate.getCertificateData() );
-            certificate.setSignature( RSA.encryptRSA( digest, PRIVATE_KEY ) );
             MessageContent signedContent = ContentFactory.createSigneContent( encoder.encode( certificate ) ,sharedDHSecret );
             CLIENT_OUTPUT_STREAM.writeObject( new Message("CA", certificate.getSubject(), signedContent ) );
 
+        }
+
+        private CustomCertificate signeCertificate( CustomCertificate certificate)
+        {
+            //Create a new certificate for the serialNumber be correct;
+            CustomCertificate newCertificate = new CertificateGenerator().generate();
+            newCertificate.setSubject( certificate.getSubject() );
+            newCertificate.setPublicKey( certificate.getPublicKey() );
+            newCertificate.setIssuer("CA");
+            newCertificate.setValidFrom( new Date() );
+            newCertificate.setValidTo( new Date(System.currentTimeMillis() + CONFIG.getCertificateValidityPeriod() * 1000L) );
+            byte[] digest = HASH.generateDigest( newCertificate.getCertificateData() );
+            newCertificate.setSignature( RSA.encryptRSA( digest, PRIVATE_KEY ) );
+
+            LOGGER.log("Certificate Original SerialNumber " + certificate , Optional.of(LogTypes.DEBUG ) );
+            LOGGER.log("Certificate SerialNumber " + newCertificate , Optional.of(LogTypes.DEBUG ) );
+
+            return newCertificate;
         }
 
         /**

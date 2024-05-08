@@ -27,6 +27,7 @@ import java.math.BigInteger;
 import java.net.Socket;
 import java.security.KeyPair;
 import java.security.PublicKey;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -224,11 +225,11 @@ public class Client
     {
         String[] userNames = args.split(" ");
 
-        if(userNames.length == 0)
+        if( args.isBlank() )
         {
             for ( MessageRecord msg : messages )
             {
-                System.out.println( msg.getMessage() );
+                System.out.println( msg );
             }
         }
         else
@@ -240,15 +241,17 @@ public class Client
     }
     private void ListMessagesOfUser( String userName )
     {
-        String showing = userName.isBlank() ? "Showing All Messages" : "Showing Messages of " + userName;
-        System.out.println( showing );
-        int messagesCount = 0;
+        if( userName.isBlank() )
+            return;
 
+        System.out.println( "Showing Messages of: " + userName );
+
+        int messagesCount = 0;
         for ( MessageRecord msg : messages ) {
 
             if( msg.getSender().equals( userName ) )
             {
-                System.out.println( msg.getMessage() );
+                System.out.println( msg );
                 messagesCount++;
             }
         }
@@ -259,7 +262,7 @@ public class Client
 
     private void sendCommunicationCommandHandler(String args )
     {
-        ArrayList<String> usersToSend = new ArrayList<>();
+        List<String> usersToSend = new ArrayList<>();
 
         int index;
         int spaceIndex = 0;
@@ -280,10 +283,22 @@ public class Client
             return;
         }
 
-        String msg = args.substring(spaceIndex);
+        Iterator<String> usersNames;
+        if(usersToSend.isEmpty())
+            usersNames = connectedUsers.keys().asIterator();
+        else
+            usersNames = usersToSend.iterator();
+
+        String msg = args.substring(spaceIndex+1 );
+        sendMessage( usersNames, msg);
+    }
+    private void sendMessage( Iterator<String> usersToSend, String message )
+    {
         ClientUser userToSend;
-        for( String user : usersToSend )
+        String user;
+        while ( usersToSend.hasNext() )
         {
+            user = usersToSend.next();
             userToSend = connectedUsers.get( user );
             if( userToSend == null )
             {
@@ -294,8 +309,8 @@ public class Client
                 if( !userToSend.hasAgreedOnSecret() )
                     startAgreeingOnSecret( userToSend );
 
-                LOGGER.log("Sending msg "+ msg + " to:" + user, Optional.of(LogTypes.DEBUG) );
-                sendCommunication(userToSend,msg);
+                LOGGER.log("Sending msg "+ message + " to:" + user, Optional.of(LogTypes.DEBUG) );
+                sendCommunication(userToSend,message);
             }
         }
     }
@@ -710,6 +725,7 @@ public class Client
             if (fromUser == null)
             {
                 LOGGER.log( "Invalid Sender (not connected)." + message.getSender(), Optional.of(LogTypes.ERROR) );
+
                 return;
             }
 
@@ -722,8 +738,8 @@ public class Client
             try
             {
                 String msgDecrypted = new String( AES.decryptMessage( message.getContent().getByteMessage(), fromUser.getSharedSecret().toByteArray() ) );
-                LOGGER.log(String.format("Message from: %s : %s", message.getSender() ,msgDecrypted ), Optional.of(LogTypes.INFO));
-                messages.add(  new MessageRecord( fromUser.getUsername() , msgDecrypted ) );
+                LOGGER.log(String.format("Message from: %s -> %s", message.getSender() ,msgDecrypted ), Optional.of(LogTypes.INFO));
+                messages.add(  new MessageRecord( fromUser.getUsername() , msgDecrypted , new SimpleDateFormat("HH:mm:ss").format(new Date()) ) );
             }
             catch (Exception e)
             {
