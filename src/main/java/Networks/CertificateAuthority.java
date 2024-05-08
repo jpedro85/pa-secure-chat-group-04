@@ -1,10 +1,11 @@
 package Networks;
 
 import Utils.Certificate.CertificateEntry;
+import Utils.Certificate.CertificateGenerator;
 import Utils.Certificate.CustomCertificate;
 import Utils.Certificate.PEMCertificateEncoder;
 import Utils.Message.Contents.ContentFactory;
-import Utils.Message.Contents.DiffieHellmanContent;
+import Utils.Message.Contents.DiffieHellmanKeyChangeContent;
 import Utils.Message.Contents.Interfaces.MessageContent;
 import Utils.Message.Contents.IntegrityContent;
 import Utils.Config.Config;
@@ -101,7 +102,6 @@ public class CertificateAuthority extends Server{
         @Override
         protected void handleRequest(Object object)
         {
-            LOGGER.log( "inhandle message",Optional.of(LogTypes.DEBUG));
             handleMessage( (Message)object );
         }
 
@@ -133,7 +133,7 @@ public class CertificateAuthority extends Server{
         {
             switch ( (DiffieHellmanTypes)message.getContent().getSubType() )
             {
-                case KEY_CHANGE -> { handleDiffieHellmanKeyChange( (DiffieHellmanContent) message.getContent() ); }
+                case KEY_CHANGE -> { handleDiffieHellmanKeyChange( (DiffieHellmanKeyChangeContent) message.getContent() ); }
 
                 default -> {
                     LOGGER.log( "Server not prepared for receiving messages of type : " + message.getContent().getType().toString()
@@ -142,7 +142,7 @@ public class CertificateAuthority extends Server{
             }
         }
 
-        private void handleDiffieHellmanKeyChange( DiffieHellmanContent content )
+        private void handleDiffieHellmanKeyChange( DiffieHellmanKeyChangeContent content )
         {
             try
             {
@@ -159,10 +159,6 @@ public class CertificateAuthority extends Server{
                     CLIENT_OUTPUT_STREAM.writeObject(
                             new Message( "CA", "sender", ContentFactory.createErrorContent( content , "Received message has not valid digest" )  ) );
                 }
-            }
-            catch (NoSuchAlgorithmException e )
-            {
-                LOGGER.log( "Algorithm error " + e.getMessage() , Optional.of(LogTypes.ERROR) );
             }
             catch (IOException e)
             {
@@ -307,15 +303,29 @@ public class CertificateAuthority extends Server{
                 return;
             }
 
-            certificate.setIssuer("CA");
-            certificate.setValidFrom( new Date() );
-            certificate.setValidTo( new Date(System.currentTimeMillis() + CONFIG.getCertificateValidityPeriod() * 1000L) );
+            certificate = signeCertificate( certificate );
 
-            byte[] digest = HASH.generateDigest( certificate.getCertificateData() );
-            certificate.setSignature( RSA.encryptRSA( digest, PRIVATE_KEY ) );
             MessageContent signedContent = ContentFactory.createSigneContent( encoder.encode( certificate ) ,sharedDHSecret );
             CLIENT_OUTPUT_STREAM.writeObject( new Message("CA", certificate.getSubject(), signedContent ) );
 
+        }
+
+        private CustomCertificate signeCertificate( CustomCertificate certificate)
+        {
+            //Create a new certificate for the serialNumber be correct;
+            CustomCertificate newCertificate = new CertificateGenerator().generate();
+            newCertificate.setSubject( certificate.getSubject() );
+            newCertificate.setPublicKey( certificate.getPublicKey() );
+            newCertificate.setIssuer("CA");
+            newCertificate.setValidFrom( new Date() );
+            newCertificate.setValidTo( new Date(System.currentTimeMillis() + CONFIG.getCertificateValidityPeriod() * 1000L) );
+            byte[] digest = HASH.generateDigest( newCertificate.getCertificateData() );
+            newCertificate.setSignature( RSA.encryptRSA( digest, PRIVATE_KEY ) );
+
+            LOGGER.log("Certificate Original SerialNumber " + certificate , Optional.of(LogTypes.DEBUG ) );
+            LOGGER.log("Certificate SerialNumber " + newCertificate , Optional.of(LogTypes.DEBUG ) );
+
+            return newCertificate;
         }
 
         /**

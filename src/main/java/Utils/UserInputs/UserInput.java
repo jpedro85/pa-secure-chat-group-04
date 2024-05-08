@@ -32,7 +32,7 @@ public class UserInput
         System.out.println("Command options:");
         for (int i = 0; i < COMMANDS.size(); i++)
         {
-            System.out.println( "("+i+") -> " + COMMANDS.get(i) );
+            System.out.println( " -> " + COMMANDS.get(i) );
         }
 
     }
@@ -55,16 +55,28 @@ public class UserInput
 
     }
 
-    public void executeFromInput( String input )
+    public void executeFromInput()
     {
-        int space = input.indexOf(" ");
-        String commandName = input.substring(0, input.indexOf(" ") );
-        String args = input.substring( space , input.length()-1 );
-
         Command command;
+        int space;
+        String args,commandName,input;
         do
         {
-            command = selectCommand( askInput("Command") );
+            showOptions();
+            input = askInput("Command" );
+            space = input.indexOf(' ');
+            if( space == -1 )
+            {
+                commandName = input.trim();
+                args = "";
+            }
+            else
+            {
+                commandName = input.substring(0, space );
+                args = input.substring( space );
+            }
+
+            command = selectCommand( commandName );
         }
         while( command == null);
 

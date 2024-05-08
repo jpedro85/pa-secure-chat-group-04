@@ -8,14 +8,14 @@ import Utils.Security.Integrity.HASH;
 
 import java.math.BigInteger;
 
-public class DiffieHellmanContent implements MessageContentIntegrityHash
+public class DiffieHellmanKeyChangeContent implements MessageContentIntegrityHash
 {
 
     private final ContentSubtype TYPE;
-    private final BigInteger PUBLIC_KEY;
+    private final byte[] PUBLIC_KEY;
     private final byte[] DIGEST;
 
-    public DiffieHellmanContent(BigInteger publicKey )
+    public DiffieHellmanKeyChangeContent( byte[] publicKey )
     {
         TYPE = DiffieHellmanTypes.KEY_CHANGE;
         PUBLIC_KEY = publicKey;
@@ -23,18 +23,16 @@ public class DiffieHellmanContent implements MessageContentIntegrityHash
     }
 
     public BigInteger getPublic_key() {
-        return PUBLIC_KEY;
+        return new BigInteger(PUBLIC_KEY);
     }
 
     @Override
     public byte[] getByteMessage() {
-        return getStringMessage().getBytes() ;
+        return PUBLIC_KEY ;
     }
 
     @Override
-    public String getStringMessage() {
-        return PUBLIC_KEY.toString() ;
-    }
+    public String getStringMessage() { return new String( PUBLIC_KEY ); }
 
     @Override
     public ContentTypes getType() {

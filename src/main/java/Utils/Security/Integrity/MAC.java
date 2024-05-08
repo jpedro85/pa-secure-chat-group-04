@@ -20,7 +20,6 @@ public class MAC {
      *
      * @return the message MAC
      *
-     * @throws Exception if the message MAC algorithm is not available
      */
     public static byte[] generateMAC ( byte[] message , byte[] macKey )
     {

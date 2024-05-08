@@ -16,8 +16,6 @@ public class HASH {
      * @param message The message to be digested.
      *
      * @return the message digest
-     *
-     * @throws Exception if the message digest algorithm is not available
      */
     public static byte[] generateDigest ( byte[] message )
     {

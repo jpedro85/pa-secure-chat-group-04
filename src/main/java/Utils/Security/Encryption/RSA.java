@@ -31,7 +31,6 @@ public class RSA
      *
      * @return the encrypted message
      *
-     * @throws Exception if any error occurs during the encryption process
      */
     public static byte[] encryptRSA ( byte[] message , Key publicKey )
     {
@@ -55,7 +54,6 @@ public class RSA
      *
      * @return the decrypted message
      *
-     * @throws Exception if any error occurs during the decryption process
      */
     public static byte[] decryptRSA ( byte[] message , Key privateKey )
     {
