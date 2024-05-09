@@ -472,7 +472,7 @@ public class Client
                 continue;
             }
 
-            if ( requestRegister( username ) )
+            if ( requestRegister( username.replace(' ','_') ) )
             {
                 return new ClientUser( username );
             }
