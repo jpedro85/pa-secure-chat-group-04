@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigInteger;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.security.KeyPair;
 import java.security.PublicKey;
@@ -75,7 +76,7 @@ public class Client
     private VarSync<Boolean> isWaitingForCertificate;
 
 
-    public Client(Config config, Logger logger)
+    public Client(Config config, Logger logger) throws IOException
     {
         LOGGER = logger;
         CONFIG = config;
@@ -93,15 +94,16 @@ public class Client
             MSG_SERVER_CONNECTION = connect( CONFIG.getMsgServerPort() );
             MSG_SERVER_CONNECTION_OUTPUT = new ObjectOutputStream( MSG_SERVER_CONNECTION.getOutputStream() );
             MSG_SERVER_CONNECTION_INPUT = new ObjectInputStream( MSG_SERVER_CONNECTION.getInputStream() );
+        }
+        catch (RuntimeException e) { throw new ConnectException("Could not connect to MSGServer");}
 
+        try
+        {
             CA_SERVER_CONNECTION = connect( CONFIG.getCaServerPort() );
             CA_SERVER_CONNECTION_OUTPUT = new ObjectOutputStream( CA_SERVER_CONNECTION.getOutputStream() );
             CA_SERVER_CONNECTION_INPUT = new ObjectInputStream( CA_SERVER_CONNECTION.getInputStream() );
         }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
+        catch (RuntimeException e) { throw new ConnectException("Could not connect to CAServer");}
 
     }
 

@@ -30,7 +30,8 @@ public class MainClient {
         }
         catch ( IOException e)
         {
-            System.out.println("Can not start program. Failed Loading Config");
+            System.out.println("Can not start program.");
+            System.out.println(e.getMessage());
         }
     }
 

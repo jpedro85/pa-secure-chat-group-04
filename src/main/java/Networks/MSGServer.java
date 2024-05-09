@@ -162,9 +162,15 @@ public class MSGServer extends Server
             }
         }
 
-        /*TODO:ADD Integrity to digest*/
         private void register( RegisterContent content )
         {
+
+            if (!content.hasValidDigest())
+            {
+                LOGGER.log("Received register request has no valid digest.", Optional.of(LogTypes.ERROR));
+                return;
+            }
+
             registeredUsernames.lock();
             if ( registeredUsernames.asyncGet().contains( content.getStringMessage() ) || connectedUsers.containsKey( content.getStringMessage() ) )
             {
@@ -197,6 +203,12 @@ public class MSGServer extends Server
 
         private void logIn( LogInContent content )
         {
+            if (!content.hasValidDigest())
+            {
+                LOGGER.log("Received login request has no valid digest.", Optional.of(LogTypes.ERROR));
+                return;
+            }
+
             if(user != null)
             {
                 user.setCertificate( content.getCertificate() );
