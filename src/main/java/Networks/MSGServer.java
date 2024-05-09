@@ -12,7 +12,6 @@ import Utils.Message.Message;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,6 +90,8 @@ public class MSGServer extends Server
 
                 case LOGIN -> { logIn( (LogInContent) message.getContent() ); }
 
+                case LOGIN_RENOVATE -> { renovateLogin( message ); }
+
                 case LOGOUT -> { close(); }
 
                 default -> { throw new RuntimeException("InvalidContentType"); }
@@ -139,7 +140,10 @@ public class MSGServer extends Server
         private void sendDirectMessage( Message message )
         {
             VarSync<ClientHandler> connectedUser = connectedUsers.get( message.getRecipient() );
-            sendDirectMessage( connectedUser, message );
+            if( connectedUser != null )
+                sendDirectMessage( connectedUser, message );
+            else
+                LOGGER.log("Not redirected!\nReceived redirect request to a not connected user: " + message.getRecipient() , Optional.of(LogTypes.WARN));
         }
 
         private void sendDirectMessage( VarSync<ClientHandler> connectedUser, Message message )
@@ -176,6 +180,21 @@ public class MSGServer extends Server
             }
         }
 
+        private void renovateLogin( Message message )
+        {
+            if( !((LogInRenovateContent)message.getContent()).hasValidDigest() )
+            {
+                LOGGER.log("Received message has invalid digest at renovate login " + message.getSender() , Optional.of(LogTypes.ERROR) );
+                return;
+            }
+
+            user.setCertificate( ((LogInRenovateContent)message.getContent()).getCertificate() );
+            MessageContent sendContent = ContentFactory.createLoginRenovateContent( user.getCertificate() , user.getUsername() );
+            broadcast( new Message( "Server", "", sendContent ) );
+
+            LOGGER.log("User " + user.getUsername() + " renovated login .",Optional.of(LogTypes.INFO));
+        }
+
         private void logIn( LogInContent content )
         {
             if(user != null)
@@ -200,10 +219,10 @@ public class MSGServer extends Server
 
                 sendConfirmation( new Message( "Server", user.getUsername(), ContentFactory.createAllLoggedInContent( usersLoggedIN ) ));
 
-                LogInContent sendContent = new LogInContent( user.getCertificate() , user.getUsername() );
+                MessageContent sendContent = ContentFactory.createLoginContent( user.getCertificate() , user.getUsername() );
                 broadcast( new Message( "Server", "", sendContent ) );
 
-                LOGGER.log("User logged in.",Optional.of(LogTypes.INFO));
+                LOGGER.log("User " + user.getUsername() +" logged in.",Optional.of(LogTypes.INFO));
             }
             else
             {

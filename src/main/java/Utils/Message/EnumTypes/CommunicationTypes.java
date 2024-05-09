@@ -7,7 +7,9 @@ public enum CommunicationTypes implements ContentSubtype {
     /**
      * Represents a complete encrypted message.
      */
-    MSG(ContentTypes.COMMUNICATION);
+    MSG(ContentTypes.COMMUNICATION),
+    INVALID_CERTIFICATE(ContentTypes.COMMUNICATION);
+
     private final ContentTypes TYPE;
 
     /**

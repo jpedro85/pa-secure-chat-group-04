@@ -63,6 +63,27 @@ public class ContentFactory
         return new LogInContent(certificate, username);
     }
 
+    public static MessageContent createLoginRenovateContent(String certificate, String username) {
+        if (certificate == null || username == null) {
+            throw new IllegalArgumentException("Invalid arguments: certificate and username cannot be null");
+        }
+        return new LogInRenovateContent(certificate, username);
+    }
+
+    public static MessageContent createCertificateStateContent( int serialNumber, boolean isValid ) {
+        return new CertificateState( isValid, serialNumber);
+    }
+
+    public static MessageContent createCertificateStateContent( int serialNumber )
+    {
+        return new CertificateState(false,serialNumber);
+    }
+
+    public static MessageContent createCertificateStateInvalidContent( int serialNumber )
+    {
+        return new CertificateStateInvalid( serialNumber );
+    }
+
     public static MessageContent createLogoutContent(String username) {
         if (username == null) {
             throw new IllegalArgumentException("Invalid argument: username cannot be null");
