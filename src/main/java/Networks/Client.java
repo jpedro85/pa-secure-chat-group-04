@@ -9,6 +9,7 @@ import Utils.Logger.Enums.LogTypes;
 import Utils.Logger.Logger;
 import Utils.Message.Contents.*;
 import Utils.Message.Contents.Interfaces.MessageContent;
+import Utils.Message.Contents.Interfaces.MessageContentIntegrityHash;
 import Utils.Message.EnumTypes.*;
 import Utils.Message.Message;
 import Utils.Message.MessageRecord;
@@ -49,7 +50,7 @@ public class Client
 
     private BigInteger sharedDHSecretCA;
     private ConcurrentHashMap< String, ClientUser > connectedUsers;
-    private User client;
+    private ClientUser client;
     private BlockingQueue<MessageRecord> messages;
     private final ReentrantLock AGREE_ON_SECRETE_LOCK;
     private final Condition AGREE_ON_SECRETE_LOCK_CONDITION;
@@ -70,6 +71,9 @@ public class Client
     private final ObjectInputStream CA_SERVER_CONNECTION_INPUT;
     private final ObjectOutputStream CA_SERVER_CONNECTION_OUTPUT;
 
+    private VarSync<Boolean> isLogged;
+    private VarSync<Boolean> isWaitingForCertificate;
+
 
     public Client(Config config, Logger logger)
     {
@@ -81,6 +85,8 @@ public class Client
         AGREE_ON_SECRETE_LOCK_CONDITION = AGREE_ON_SECRETE_LOCK.newCondition();
         exit = new VarSync<>(false);
         USER_INPUT = createUserInput();
+        isLogged = new VarSync<>(false);
+        isWaitingForCertificate = new VarSync<>(false);
 
         try
         {
@@ -106,7 +112,7 @@ public class Client
         userInput.addCommand( new Command( "listUsers", args -> { ListUsers(); } , "List the connected and authenticated users. (no arguments)" ) );
         userInput.addCommand( new Command( "listMsg", this::ListMessages , "List all received messages. List <username1> <username2> ... " ) );
         userInput.addCommand( new Command( "msg", this::sendCommunicationCommandHandler, "Send a message. msg (Optional)< @<username> @<username> ... > <Message>" ) );
-        userInput.addCommand( new Command( "revoke", args -> {  } , "Revoke the created certificate." ) );
+        userInput.addCommand( new Command( "revoke", this::revokeCertificate  , "Revoke the certificate of the user.To this is user if user is omitted. revoke (Optional)<user>"  ) );
 
         return userInput;
     }
@@ -119,13 +125,9 @@ public class Client
         client = register();
         CustomCertificate certificate = createCertificate( client.getUsername() );
 
-        certificate = askSigneCertificate( certificate );
-//        // TODO: remove after test
-//        System.out.println( certificate.getIssuer() );
-//        System.out.println( certificate.getSignature() );
-//        //--}
+//        certificate = askSigneCertificate( certificate );
 
-        client.setCertificate( new PEMCertificateEncoder().encode( certificate ) );
+        client.setCertificate( askSigneCertificate( certificate ) );
         caPublicKey = askPublicKey();
 
         if (caPublicKey == null)
@@ -156,49 +158,110 @@ public class Client
 
     private void validateConnectedUsers()
     {
-        ArrayList<String> invalidUsers = new ArrayList<>();
-
-        for( Map.Entry<String,ClientUser> entry : connectedUsers.entrySet() )
+        Iterator<ClientUser> userIterator = connectedUsers.values().iterator();
+        ClientUser user;
+        PEMCertificateEncoder encoder = new PEMCertificateEncoder();
+        while( userIterator.hasNext() )
         {
-            if( ! isValidUserCertificate( entry.getValue() ) )
-                invalidUsers.add( entry.getKey() );
+            user = userIterator.next();
+            if( ! isValidUserCertificate( user ) )
+            {
+                try
+                {
+                    connectedUsers.remove( user.getUsername() );
+                    CustomCertificate certificate = encoder.decode( user.getCertificate() ) ;
+                    sendInvalidCertificateMessage( user, certificate );
+                }
+                catch (ClassNotFoundException | IOException e)
+                {
+                    LOGGER.log("Could decode certificate.",Optional.of(LogTypes.ERROR));
+                }
+            }
+            else
+                LOGGER.log( "The user '" + user.getUsername() + "' has been connected.", Optional.of(LogTypes.INFO));
+
         }
 
-        for ( String str : invalidUsers)
-        {
-            connectedUsers.remove(str);
-        }
+
     }
+
     private boolean isValidUserCertificate( User user )
     {
         try
         {
-            CustomCertificate certificate = new PEMCertificateEncoder().decode( user.getCertificate());
+            return isValidUserCertificate(user, new PEMCertificateEncoder().decode( user.getCertificate() ) );
+        }
+        catch (IOException | ClassNotFoundException e)
+        {
+            LOGGER.log( "Couldn't decode user certificate '" + user.getUsername() + "'" , Optional.of(LogTypes.ERROR));
+        }
+        return false;
+    }
+    private boolean isValidUserCertificate( User user , CustomCertificate certificate )
+    {
+        try
+        {
             byte[] digest = HASH.generateDigest( certificate.getCertificateData() );
 
             if ( ! Arrays.equals( RSA.decryptRSA( certificate.getSignature() , caPublicKey ) , digest ) )
             {
-                LOGGER.log( String.format("User <%s> certificate has an invalid signature.", user.getUsername() ), Optional.of(LogTypes.WARN) );
+                LOGGER.log(String.format("User <%s> certificate has an invalid signature.", user.getUsername()), Optional.of(LogTypes.WARN));
+                MessageContent content =  ContentFactory.createIntegrityContent( String.valueOf( certificate.getSerialNumber() ), sharedDHSecretCA, CACommunicationTypes.REVOKE );
+                sendMessage( new Message( client.getUsername(), "CA", content ), CA_SERVER_CONNECTION_OUTPUT );
                 return false;
-                //TODO:sendDirectMsg
             }
 
             if(certificate.getValidTo().getTime() < System.currentTimeMillis())
             {
                 LOGGER.log( String.format("User <%s> certificate has expired.", user.getUsername() ), Optional.of(LogTypes.WARN) );
+                MessageContent content =  ContentFactory.createIntegrityContent( String.valueOf( certificate.getSerialNumber() ), sharedDHSecretCA, CACommunicationTypes.REVOKE );
+                sendMessage( new Message( client.getUsername(), "CA", content ), CA_SERVER_CONNECTION_OUTPUT );
                 return false;
-                //TODO:sendDirectMsg
             }
 
-            //TODO:Check revogation state
-            LOGGER.log( "The user " + user.getUsername() + " has been connected.", Optional.of(LogTypes.INFO));
-            return true;
+            if( checkStateWithCA( certificate.getSerialNumber() ))
+            {
+                return true;
+            }
+
+            return false;
         }
         catch (IOException | ClassNotFoundException e)
         {
             LOGGER.log( "Couldn't decode user certificate '" + user.getUsername() + "'" , Optional.of(LogTypes.ERROR));
             return false;
         }
+    }
+
+    private boolean checkStateWithCA( int serialNUmber ) throws IOException, ClassNotFoundException
+    {
+        MessageContent isRevokeContent = ContentFactory.createCertificateStateContent( serialNUmber );
+        CA_SERVER_CONNECTION_OUTPUT.writeObject( new Message( client.getUsername(), "CA", isRevokeContent) );
+        Message msg = (Message) CA_SERVER_CONNECTION_INPUT.readObject();
+
+        switch ( msg.getContent().getType() )
+        {
+            case ERROR -> { LOGGER.log(msg.getContent().getStringMessage(),Optional.of(LogTypes.ERROR)); }
+
+            case CA_COMMUNICATION -> {
+
+                if( ((MessageContentIntegrityHash)msg.getContent()).hasValidDigest() )
+                {
+                    if (msg.getContent().getSubType() == CACommunicationTypes.CERTIFICATE_STATE) {
+                        return ((CertificateState) msg.getContent()).isValid();
+                    }
+                }
+                else
+                {
+                    LOGGER.log( "received message has invalid digest.",Optional.of(LogTypes.ERROR));
+                    return false;
+                }
+            }
+
+            default -> throw new RuntimeException("Invalid message received ");
+        }
+
+        return false;
     }
 
     private Socket connect(int port)
@@ -215,9 +278,15 @@ public class Client
 
     private void ListUsers()
     {
+        if ( connectedUsers.isEmpty() )
+        {
+            LOGGER.log("There is no connected users.", Optional.of(LogTypes.INFO));
+            return;
+        }
+
         for( Map.Entry<String,ClientUser> entry : connectedUsers.entrySet() )
         {
-            System.out.println( entry.getKey() );
+            System.out.println( "User '"+ entry.getKey() + "' is connected." );
         }
     }
 
@@ -356,21 +425,6 @@ public class Client
         }
     }
 
-    private void sendBroadCastCommunication( byte[] msg )
-    {
-        try
-        {
-            sendMessage(
-                    new Message( client.getUsername(), "", ContentFactory.createMSGCommunicationContent( msg ) ),
-                    MSG_SERVER_CONNECTION_OUTPUT
-            );
-
-        }
-        catch (Exception e)
-        {
-            LOGGER.log( "Could not encrypt message :" + e.getMessage(), Optional.of(LogTypes.ERROR) );
-        }
-    }
     public void sendMessage( Message message, ObjectOutputStream output )
     {
         try
@@ -383,7 +437,19 @@ public class Client
         }
     }
 
-    private User register()
+    private void sendInvalidCertificateMessage( ClientUser user, CustomCertificate certificate )
+    {
+        sendMessage(
+                new Message(
+                        client.getUsername(),
+                        "", // send broadcast
+                        ContentFactory.createCertificateStateInvalidContent( certificate.getSerialNumber() )
+                ),
+                MSG_SERVER_CONNECTION_OUTPUT
+        );
+    }
+
+    private ClientUser register()
     {
         do
         {
@@ -398,7 +464,7 @@ public class Client
 
             if ( requestRegister( username ) )
             {
-                return new User( username );
+                return new ClientUser( username );
             }
         }
         while ( true );
@@ -444,12 +510,14 @@ public class Client
     private CustomCertificate createCertificate( String username)
     {
         clientKeyPair = RSA.generateKeyPair();
-        return new CertificateGenerator()
+        CustomCertificate certificate = new CertificateGenerator()
             .forSubject( username )
             .issuedBy("none")
             .withPublicKey( clientKeyPair.getPublic() )
             .generate();
 
+        LOGGER.log("Created certificate number " + certificate.getSerialNumber(),Optional.of(LogTypes.INFO ));
+        return certificate;
     }
 
     private PublicKey askPublicKey()
@@ -466,7 +534,7 @@ public class Client
                 if ( ((PublicKeyContent)msg.getContent()).hasValidMAC( sharedDHSecretCA.toByteArray() ) )
                 {
                     PublicKey key = ((PublicKeyContent) msg.getContent()).getPublicKey();
-                    LOGGER.log("Ca public key." + key, Optional.of(LogTypes.DEBUG));
+                    LOGGER.log("Received CA public key.", Optional.of(LogTypes.DEBUG));
                     return key;
                 }
                 else
@@ -486,8 +554,9 @@ public class Client
         return null;
     }
 
-    private CustomCertificate askSigneCertificate( CustomCertificate certificate )
+    private String askSigneCertificate( CustomCertificate certificate )
     {
+        isWaitingForCertificate.syncSet(true);
         String fileName = client.getUsername()+".pem" ;
         try ( FileWriter fileWriter = new FileWriter( "src/data/Certificates/" + fileName) )
         {
@@ -507,12 +576,16 @@ public class Client
             if( ! content.hasValidMAC( sharedDHSecretCA.toByteArray() ) )
                 throw new RuntimeException( "Compromised Message on login" ) ;
 
-            return encoder.decode( content.getStringMessage() );
+            LOGGER.log("Received Signed Certificate.", Optional.of(LogTypes.DEBUG ));
+            return content.getStringMessage();
 
         }
         catch ( Exception e )
         {
             throw new RuntimeException( e) ;
+        }
+        finally {
+            isWaitingForCertificate.syncSet(false);
         }
     }
 
@@ -587,6 +660,58 @@ public class Client
 
     }
 
+
+    private void revokeCertificate( String args )
+    {
+        ClientUser user = connectedUsers.get(args.substring(1));
+
+        if(user != null)
+            revokeCertificateOfUser( user );
+        else
+            revokeThisUserCertificate();
+    }
+
+    private void revokeThisUserCertificate()
+    {
+        try
+        {
+            CustomCertificate clientCertificate = new PEMCertificateEncoder().decode( client.getCertificate() );
+            sendInvalidCertificateMessage(client, clientCertificate );
+
+            CustomCertificate certificate = createCertificate( client.getUsername() );
+            client.setCertificate( askSigneCertificate( certificate ) );
+
+            sendMessage( new Message( client.getUsername(), "Server",
+                            ContentFactory.createLoginRenovateContent( client.getCertificate(), client.getUsername() )
+                    ), MSG_SERVER_CONNECTION_OUTPUT
+            );
+
+        }
+        catch (IOException |ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    private void revokeCertificateOfUser( ClientUser user )
+    {
+        try
+        {
+            connectedUsers.remove( user.getUsername() );
+            LOGGER.log( String.format("Revoked certificate of user '%s'",user.getUsername()),Optional.of(LogTypes.INFO));
+
+            CustomCertificate certificate = new PEMCertificateEncoder().decode( user.getCertificate() );
+            String serialNumber = String.valueOf(certificate.getSerialNumber());
+
+            MessageContent content =  ContentFactory.createIntegrityContent( serialNumber, sharedDHSecretCA, CACommunicationTypes.REVOKE );
+            sendMessage( new Message( client.getUsername(), "CA", content ), CA_SERVER_CONNECTION_OUTPUT );
+
+            sendInvalidCertificateMessage( user, certificate );
+        }
+        catch (IOException | ClassNotFoundException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void logIn() throws IOException
     {
         try
@@ -604,9 +729,13 @@ public class Client
                 case ACCOUNT -> {
 
                     if (msg.getContent().getSubType() != AccountMessageTypes.LOGIN)
+                    {
                         LOGGER.log("Invalid message received" + msg.getContent().getStringMessage(), Optional.of(LogTypes.ERROR));
+                        return;
+                    }
 
-                    LOGGER.log(  "You have loged in ." , Optional.of(LogTypes.INFO));
+                    LOGGER.log(  "You have logged in." , Optional.of(LogTypes.INFO));
+                    isLogged.syncSet(true);
 
                 }
 
@@ -628,6 +757,7 @@ public class Client
             LOGGER.log("Logging out...", Optional.of(LogTypes.WARN));
             exit.syncSet(true);
             MSG_SERVER_CONNECTION_OUTPUT.writeObject( new Message(client.getUsername(), "server", ContentFactory.createTypeContent( LOGOUT )));
+            isLogged.syncSet(false);
         }
         catch (IOException e)
         {
@@ -635,7 +765,22 @@ public class Client
         }
     }
 
+    public void terminate() throws InterruptedException
+    {
+        System.out.println("Terminating");
+        if( isLogged.syncGet() )
+        {
+            this.logOut();
 
+            if(listener != null)
+            {
+                listener.close();
+                listener.join();
+            }
+        }
+        else
+            exit.syncSet(true);
+    }
 
 
 
@@ -693,7 +838,7 @@ public class Client
 
                 case ERROR -> { LOGGER.log( message.getContent().getStringMessage(), Optional.of(LogTypes.ERROR) ); }
 
-                default -> { throw new RuntimeException("Invalid Message type.");}
+                default -> { throw new RuntimeException("Invalid Message type." + message.getContent().getType() + " " + message.getContent().getStringMessage() );}
             }
         }
 
@@ -702,6 +847,8 @@ public class Client
             switch ( (AccountMessageTypes)message.getContent().getSubType() )
             {
                 case LOGIN -> { userLogin( (LogInContent)message.getContent() ); }
+
+                case LOGIN_RENOVATE -> { userLogin( (LogInRenovateContent)message.getContent() ) ;}
 
                 case LOGOUT -> { userLogout( (LogOutContent) message.getContent() ); }
 
@@ -715,6 +862,8 @@ public class Client
             {
                 case MSG -> { handleMSGMessage( message ); }
 
+                case INVALID_CERTIFICATE -> { handleInvalidCertificateMessage(message); }
+
                 default -> { throw new RuntimeException("Invalid Message type.");}
             }
         }
@@ -725,7 +874,6 @@ public class Client
             if (fromUser == null)
             {
                 LOGGER.log( "Invalid Sender (not connected)." + message.getSender(), Optional.of(LogTypes.ERROR) );
-
                 return;
             }
 
@@ -745,10 +893,55 @@ public class Client
             {
                 LOGGER.log( "Could not decrypt message" + e.getMessage(), Optional.of(LogTypes.ERROR) );
             }
-
         }
 
-        private void handleDiffieHellmanMessages( Message message)
+        private void handleInvalidCertificateMessage( Message message )
+        {
+
+            CertificateState content = (CertificateState)message.getContent();
+
+            if ( !content.hasValidDigest() )
+            {
+                LOGGER.log( "Received InvalidCertificate message has invalid digest.", Optional.of(LogTypes.ERROR) );
+                return;
+            }
+
+            try
+            {
+                PEMCertificateEncoder encoder = new PEMCertificateEncoder();
+                CustomCertificate clientCertificate =  encoder.decode( client.getCertificate() );
+
+                if ( content.getSerialNumber() == clientCertificate.getSerialNumber() && !isWaitingForCertificate.syncGet() )
+                {
+                    LOGGER.log("Renovating invalid certificate: " + clientCertificate.getSerialNumber(),Optional.of(LogTypes.INFO ));
+
+                    CustomCertificate certificate = createCertificate( client.getUsername() );
+                    client.setCertificate( askSigneCertificate( certificate ) );
+                    sendMessage( new Message( client.getUsername(), "Server",
+                            ContentFactory.createLoginRenovateContent( client.getCertificate(), client.getUsername() )
+                            ), MSG_SERVER_CONNECTION_OUTPUT
+                    );
+                }
+                else
+                {
+                    for (ClientUser user : connectedUsers.values() )
+                    {
+                        if ( encoder.decode(user.getCertificate()).getSerialNumber() == content.getSerialNumber() )
+                        {
+                            connectedUsers.remove( user.getUsername());
+                            LOGGER.log("User '"+user.getUsername()+"' is disconnected from de chat because of revoked certificate", Optional.of(LogTypes.INFO));
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (IOException | ClassNotFoundException e)
+            {
+                LOGGER.log("Error when decoding certificate." + e.getMessage(), Optional.of(LogTypes.ERROR) );
+            }
+        }
+
+        private void handleDiffieHellmanMessages( Message message )
         {
             switch ( (DiffieHellmanTypes)message.getContent().getSubType() )
             {
@@ -775,66 +968,81 @@ public class Client
             }
 
             if ( !sender.isAgreeingOnSecret() )
-            {
-                try
-                {
-                    //createKey
-                    sender.setAgreeingOnSecret(true);
-                    sender.setGeneratedPrivateKey( DiffieHellman.generatePrivateKey() );
-                    sender.setGeneratedPublicKey( DiffieHellman.generatePublicKey( sender.getGeneratedPrivateKey() ));
-                    //decrypt DHRSA key
-                    CustomCertificate fromUserCertificate = new PEMCertificateEncoder().decode( sender.getCertificate() );
-                    byte[] decryptedDHPublicKey = RSA.decryptRSA( content.getByteMessage() , fromUserCertificate.getPublicKey() );
-
-                    sender.setSharedSecret( DiffieHellman.computeSecret( new BigInteger(decryptedDHPublicKey) , sender.getGeneratedPrivateKey() ) );
-                    //send DHRSA key
-                    byte[] encryptedDHPublicKey = RSA.encryptRSA( sender.getGeneratedPublicKey().toByteArray() , clientKeyPair.getPrivate() );
-                    sendMessage(
-                            new Message( client.getUsername(), message.getSender(), ContentFactory.createDiffieHellmanRSAContent( encryptedDHPublicKey ) ),
-                            MSG_SERVER_CONNECTION_OUTPUT
-                            );
-                }
-                catch (Exception e)
-                {
-                    LOGGER.log("Couldn't decrypt public key: " + e.getMessage() , Optional.of(LogTypes.ERROR) );
-                }
-            }
+                startAgreeingOnSecret(sender,message);
             else
-            {
-                try
-                {
-                    CustomCertificate fromUserCertificate = new PEMCertificateEncoder().decode( sender.getCertificate() );
-                    byte[] decryptedDHPublicKey = RSA.decryptRSA( content.getByteMessage() , fromUserCertificate.getPublicKey() );
-                    sender.setSharedSecret( DiffieHellman.computeSecret( new BigInteger(decryptedDHPublicKey) , sender.getGeneratedPrivateKey() ) );
-                    LOGGER.log( "Secret agreed '" + sender.getSharedSecret() + "' with " + sender.getUsername(), Optional.of(LogTypes.DEBUG) );
-                    sender.setAgreeingOnSecret(false);
-                }
-                catch (Exception e)
-                {
-                    LOGGER.log("Couldn't decrypt public key: " + e.getMessage() , Optional.of(LogTypes.ERROR) );
-                }
-                finally {
-                    //signal if main thread is waiting for secret;
-                    AGREE_ON_SECRETE_LOCK.lock();
-                    AGREE_ON_SECRETE_LOCK_CONDITION.signal();
-                    AGREE_ON_SECRETE_LOCK.unlock();
-                }
-            }
+                endAgreeingOnSecret(sender,message);
+        }
 
+        private void startAgreeingOnSecret( ClientUser sender, Message message  )
+        {
+            try
+            {
+                //createKey
+                sender.setAgreeingOnSecret(true);
+                sender.setGeneratedPrivateKey( DiffieHellman.generatePrivateKey() );
+                sender.setGeneratedPublicKey( DiffieHellman.generatePublicKey( sender.getGeneratedPrivateKey() ));
+                //decrypt DHRSA key
+                CustomCertificate fromUserCertificate = new PEMCertificateEncoder().decode( sender.getCertificate() );
+                byte[] decryptedDHPublicKey = RSA.decryptRSA( message.getContent().getByteMessage() , fromUserCertificate.getPublicKey() );
+
+                sender.setSharedSecret( DiffieHellman.computeSecret( new BigInteger(decryptedDHPublicKey) , sender.getGeneratedPrivateKey() ) );
+                //send DHRSA key
+                byte[] encryptedDHPublicKey = RSA.encryptRSA( sender.getGeneratedPublicKey().toByteArray() , clientKeyPair.getPrivate() );
+                sendMessage(
+                        new Message( client.getUsername(), message.getSender(), ContentFactory.createDiffieHellmanRSAContent( encryptedDHPublicKey ) ),
+                        MSG_SERVER_CONNECTION_OUTPUT
+                );
+            }
+            catch (Exception e)
+            {
+                LOGGER.log("Couldn't decrypt public key: " + e.getMessage() , Optional.of(LogTypes.ERROR) );
+            }
+        }
+
+        private void endAgreeingOnSecret( ClientUser sender, Message message  )
+        {
+            try
+            {
+                CustomCertificate fromUserCertificate = new PEMCertificateEncoder().decode( sender.getCertificate() );
+                byte[] decryptedDHPublicKey = RSA.decryptRSA( message.getContent().getByteMessage() , fromUserCertificate.getPublicKey() );
+                sender.setSharedSecret( DiffieHellman.computeSecret( new BigInteger(decryptedDHPublicKey) , sender.getGeneratedPrivateKey() ) );
+                LOGGER.log( "Secret agreed '" + sender.getSharedSecret() + "' with " + sender.getUsername(), Optional.of(LogTypes.DEBUG) );
+                sender.setAgreeingOnSecret(false);
+            }
+            catch (Exception e)
+            {
+                LOGGER.log("Couldn't decrypt public key: " + e.getMessage() , Optional.of(LogTypes.ERROR) );
+            }
+            finally {
+                //signal if main thread is waiting for secret;
+                AGREE_ON_SECRETE_LOCK.lock();
+                AGREE_ON_SECRETE_LOCK_CONDITION.signal();
+                AGREE_ON_SECRETE_LOCK.unlock();
+            }
         }
 
         private void userLogin( LogInContent content )
         {
-            ClientUser user = new ClientUser( content.getUSERNAME() );
-            user.setCertificate( content.getCertificate() );
-
-            if( isValidUserCertificate( user ) )
+            try
             {
-                connectedUsers.put( user.getUsername() , user);
+                ClientUser user = new ClientUser( content.getUSERNAME() );
+                user.setCertificate( content.getCertificate() );
+                CustomCertificate certificate = new PEMCertificateEncoder().decode( user.getCertificate() );
+
+                if( isValidUserCertificate( user , certificate ) )
+                {
+                    connectedUsers.put( user.getUsername() , user);
+                    LOGGER.log( "The user '" + user.getUsername() + "' has been connected.", Optional.of(LogTypes.INFO));
+                }
+                else
+                    sendInvalidCertificateMessage(user,certificate);
+            }
+            catch(IOException | ClassNotFoundException e )
+            {
+                LOGGER.log(e.getMessage()+ " when decoding certificate.", Optional.of(LogTypes.ERROR) );
             }
 
         }
-
         private void userLogout( LogOutContent content )
         {
 
@@ -843,7 +1051,7 @@ public class Client
                 ClientUser user = connectedUsers.remove( content.getStringMessage() );
 
                 if( user != null)
-                    LOGGER.log("Ussr " + user.getUsername() + " has disconnected.",Optional.of(LogTypes.INFO));
+                    LOGGER.log("User '" + user.getUsername() + "' has disconnected.",Optional.of(LogTypes.INFO));
             }
             else
                 LOGGER.log( "Received logout message has invalid digest.",Optional.of(LogTypes.ERROR) );

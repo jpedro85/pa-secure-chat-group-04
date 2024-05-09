@@ -53,6 +53,6 @@ public class MessageRecord
     @Override
     public String toString()
     {
-        return "At:" + RECEIVE_DATE  + "Message from: " + SENDER + '\n' + "Message: " + MESSAGE ;
+        return "At:" + RECEIVE_DATE  + " Message from: " + SENDER + '\n' + "Message: " + MESSAGE ;
     }
 }

@@ -4,14 +4,11 @@ import Utils.Certificate.CertificateEntry;
 import Utils.Certificate.CertificateGenerator;
 import Utils.Certificate.CustomCertificate;
 import Utils.Certificate.PEMCertificateEncoder;
-import Utils.Message.Contents.ContentFactory;
-import Utils.Message.Contents.DiffieHellmanKeyChangeContent;
+import Utils.Message.Contents.*;
 import Utils.Message.Contents.Interfaces.MessageContent;
-import Utils.Message.Contents.IntegrityContent;
 import Utils.Config.Config;
 import Utils.Logger.Enums.LogTypes;
 import Utils.Logger.Logger;
-import Utils.Message.Contents.TypeContent;
 import Utils.Message.EnumTypes.CACommunicationTypes;
 import Utils.Message.EnumTypes.DiffieHellmanTypes;
 import Utils.Message.Message;
@@ -25,7 +22,6 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Date;
@@ -150,7 +146,7 @@ public class CertificateAuthority extends Server{
                 {
                     this.privateDHKey = DiffieHellman.generatePrivateKey();
                     this.publicDHKey = DiffieHellman.generatePublicKey( this.privateDHKey );
-                    clientDHPublicKey = content.getPublic_key();
+                    this.clientDHPublicKey = content.getPublic_key();
                     CLIENT_OUTPUT_STREAM.writeObject( new Message( "CA", "sender", ContentFactory.createDiffieHellmanContent( publicDHKey )  ) );
                     this.sharedDHSecret = DiffieHellman.computeSecret( clientDHPublicKey, this.privateDHKey );
                 }
@@ -174,7 +170,7 @@ public class CertificateAuthority extends Server{
 
                 case REVOKE -> { handleRevokeContent( (IntegrityContent)message.getContent(), message.getSender()  ); }
 
-                case CERTIFICATE_STATE -> { handleCheckCertificateContent( (IntegrityContent)message.getContent(), message.getSender() ); }
+                case CERTIFICATE_STATE -> { handleCheckCertificateContent( (CertificateState) message.getContent(), message.getSender() ); }
 
                 case PUBLIC_KEY -> { handlePublicKeyRequest( (TypeContent) message.getContent() , message.getSender() ); }
 
@@ -239,29 +235,18 @@ public class CertificateAuthority extends Server{
             }
         }
 
-        private void handleCheckCertificateContent( IntegrityContent content , String sender)
+        private void handleCheckCertificateContent( CertificateState content , String sender)
         {
             try
             {
-                if( sharedDHSecret == null)
-                {
-                    CLIENT_OUTPUT_STREAM.writeObject( new Message("CA", sender, ContentFactory.createErrorContent(content, "Invalid request:")));
-                    LOGGER.log("Client tried to signe without agreeing on a secret.", Optional.of(LogTypes.WARN));
-                    return;
-                }
-                else if ( !content.hasValidMAC( sharedDHSecret.toByteArray() ) )
+                if( ! content.hasValidDigest() )
                 {
                     CLIENT_OUTPUT_STREAM.writeObject( new Message( "CA", sender,  ContentFactory.createErrorContent( content , "Received message has not valid digest" )  ) );
                     LOGGER.log("Received message has not valid digest", Optional.of(LogTypes.WARN));
                     return;
                 }
 
-                int serialNumber =  Integer.parseInt( content.getStringMessage() );
-                MessageContent isRevokeContent = ContentFactory.createIntegrityContent(
-                                                    Boolean.toString( isRevokedCertificate( serialNumber ) ),
-                                                    sharedDHSecret,
-                                                    CACommunicationTypes.CERTIFICATE_STATE  );
-
+                MessageContent isRevokeContent = ContentFactory.createCertificateStateContent( content.getSerialNumber() , isValidCertificate( content.getSerialNumber() ) );
                 CLIENT_OUTPUT_STREAM.writeObject( new Message( "CA", sender, isRevokeContent) );
             }
             catch (IOException e)
@@ -296,21 +281,28 @@ public class CertificateAuthority extends Server{
             PEMCertificateEncoder encoder = new PEMCertificateEncoder();
             CustomCertificate certificate = extractCertificate( content.getStringMessage() , encoder );
 
-            if ( !verifyCertificate( certificate ) )
+            certificate = createCertificate( certificate );
+
+            CertificateEntry entry = verifyCertificate( certificate );
+            if ( !entry.isApproved() )
             {
                 MessageContent errorContent = ContentFactory.createErrorContent( content , "The certificate has not pass the validate check.");
                 CLIENT_OUTPUT_STREAM.writeObject( new Message("CA", sender, errorContent ) );
                 return;
             }
 
-            certificate = signeCertificate( certificate );
+            certificateEntries.put( certificate.getSerialNumber() , entry );
+            byte[] digest = HASH.generateDigest( certificate.getCertificateData() );
+            certificate.setSignature( RSA.encryptRSA( digest, PRIVATE_KEY ) );
+
+            LOGGER.log(String.format("New certificate Signed:%d for %s", certificate.getSerialNumber(), certificate.getSubject()  ) , Optional.of(LogTypes.INFO ) );
 
             MessageContent signedContent = ContentFactory.createSigneContent( encoder.encode( certificate ) ,sharedDHSecret );
             CLIENT_OUTPUT_STREAM.writeObject( new Message("CA", certificate.getSubject(), signedContent ) );
 
         }
 
-        private CustomCertificate signeCertificate( CustomCertificate certificate)
+        private CustomCertificate createCertificate( CustomCertificate certificate)
         {
             //Create a new certificate for the serialNumber be correct;
             CustomCertificate newCertificate = new CertificateGenerator().generate();
@@ -319,11 +311,6 @@ public class CertificateAuthority extends Server{
             newCertificate.setIssuer("CA");
             newCertificate.setValidFrom( new Date() );
             newCertificate.setValidTo( new Date(System.currentTimeMillis() + CONFIG.getCertificateValidityPeriod() * 1000L) );
-            byte[] digest = HASH.generateDigest( newCertificate.getCertificateData() );
-            newCertificate.setSignature( RSA.encryptRSA( digest, PRIVATE_KEY ) );
-
-            LOGGER.log("Certificate Original SerialNumber " + certificate , Optional.of(LogTypes.DEBUG ) );
-            LOGGER.log("Certificate SerialNumber " + newCertificate , Optional.of(LogTypes.DEBUG ) );
 
             return newCertificate;
         }
@@ -334,11 +321,9 @@ public class CertificateAuthority extends Server{
          * @param certificate The certificate to approve.
          * @return <b>True</b> if the certificate is invalid.
          */
-        private boolean verifyCertificate( CustomCertificate certificate )
+        private CertificateEntry verifyCertificate( CustomCertificate certificate )
         {
-            CertificateEntry entry =  new CertificateEntry( certificate, !certificate.getSubject().contains("hacker") );
-            certificateEntries.put( certificate.getSerialNumber() , entry );
-            return  entry.isApproved() ;
+            return new CertificateEntry( certificate, !certificate.getSubject().contains("hacker") );
         }
 
         /**
@@ -351,9 +336,17 @@ public class CertificateAuthority extends Server{
             certificateEntries.get( serialNumber ).revoke();
         }
 
-        private boolean isRevokedCertificate( int serialNumber )
+        private boolean isValidCertificate( int serialNumber )
         {
-            return !certificateEntries.get( serialNumber ).isApproved();
+            CertificateEntry entry = certificateEntries.get( serialNumber );
+            if( entry != null )
+                return certificateEntries.get( serialNumber ).isApproved();
+            else
+            {
+                LOGGER.log("Serial number not regestered.", Optional.of(LogTypes.ERROR));
+                return false;
+            }
+
         }
 
     }
