@@ -20,6 +20,7 @@ import Utils.Security.Integrity.HASH;
 import Utils.UserInputs.Command;
 import Utils.UserInputs.UserInput;
 
+import javax.sound.midi.Soundbank;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -110,11 +111,12 @@ public class Client
     private UserInput createUserInput()
     {
         UserInput userInput = new UserInput();
-        userInput.addCommand( new Command( "exit", args -> { logOut(); } , "Exit the program. (no arguments)" ) );
+        userInput.addCommand( new Command( "help", args -> { USER_INPUT.showOptions(); } , "Show all commands. (No Arguments)" ) );
         userInput.addCommand( new Command( "listUsers", args -> { ListUsers(); } , "List the connected and authenticated users. (no arguments)" ) );
         userInput.addCommand( new Command( "listMsg", this::ListMessages , "List all received messages. List <username1> <username2> ... " ) );
         userInput.addCommand( new Command( "msg", this::sendCommunicationCommandHandler, "Send a message. msg (Optional)< @<username> @<username> ... > <Message>" ) );
         userInput.addCommand( new Command( "revoke", this::revokeCertificate  , "Revoke the certificate of the user.To this is user if user is omitted. revoke (Optional)<user>"  ) );
+        userInput.addCommand( new Command( "exit", args -> { logOut(); } , "Exit the program. (no arguments)" ) );
 
         return userInput;
     }
@@ -333,6 +335,12 @@ public class Client
 
     private void sendCommunicationCommandHandler(String args )
     {
+        if(args.isBlank())
+        {
+            System.out.println("Invalid arguments, msg command takes at least one argument 'message'");
+            return;
+        }
+
         List<String> usersToSend = new ArrayList<>();
 
         int index;
@@ -665,10 +673,14 @@ public class Client
 
     private void revokeCertificate( String args )
     {
-        ClientUser user = connectedUsers.get(args.substring(1));
-
-        if(user != null)
-            revokeCertificateOfUser( user );
+        if( !args.isBlank() )
+        {
+            ClientUser user = connectedUsers.get(args.substring(1));
+            if(user != null)
+                revokeCertificateOfUser( user );
+            else
+                System.out.println("Invalid arguments. <" + args + "> is not a valid user.");
+        }
         else
             revokeThisUserCertificate();
     }
