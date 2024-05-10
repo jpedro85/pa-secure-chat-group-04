@@ -402,7 +402,7 @@ public class Client
         else
             usersNames = usersToSend.iterator();
 
-        String msg = args.substring(spaceIndex+1 );
+        String msg = args.substring(spaceIndex );
         sendMessage( usersNames, msg);
     }
     private void sendMessage( Iterator<String> usersToSend, String message )
