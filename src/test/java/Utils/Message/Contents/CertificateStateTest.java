@@ -1,4 +1,5 @@
 package Utils.Message.Contents;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import Utils.Message.EnumTypes.CACommunicationTypes;
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class CertificateStateTest {
 
     @Test
+    @DisplayName("testIsValid")
     public void testIsValid() {
         boolean isValid = true;
         CertificateState certificateState = new CertificateState(isValid, 123456);
@@ -16,6 +18,7 @@ public class CertificateStateTest {
     }
 
     @Test
+    @DisplayName("testGetSerialNumber")
     public void testGetSerialNumber() {
         int serialNumber = 123456;
         CertificateState certificateState = new CertificateState(true, serialNumber);
@@ -23,6 +26,7 @@ public class CertificateStateTest {
     }
 
     @Test
+    @DisplayName("testGetStringMessage")
     public void testGetStringMessage() {
         boolean isValid = true;
         int serialNumber = 123456;
@@ -31,12 +35,14 @@ public class CertificateStateTest {
     }
 
     @Test
+    @DisplayName("testGetType")
     public void testGetType() {
         CertificateState certificateState = new CertificateState(true, 123456);
         assertEquals(ContentTypes.CA_COMMUNICATION, certificateState.getType());
     }
 
     @Test
+    @DisplayName("testGetSubType")
     public void testGetSubType() {
         CertificateState certificateState = new CertificateState(true, 123456);
         assertEquals(CACommunicationTypes.CERTIFICATE_STATE, certificateState.getSubType());

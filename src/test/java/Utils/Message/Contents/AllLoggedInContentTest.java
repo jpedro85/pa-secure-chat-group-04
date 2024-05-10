@@ -1,4 +1,6 @@
 package Utils.Message.Contents;
+import Utils.Security.Integrity.HASH;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import Networks.User;
@@ -11,11 +13,26 @@ import java.util.ArrayList;
 public class AllLoggedInContentTest {
 
     @Test
+    @DisplayName("testConstructorNullUsers")
     public void testConstructorNullUsers() {
-        new AllLoggedInContent(null);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            new AllLoggedInContent(null);
+        });
     }
 
     @Test
+    @DisplayName("testDigest")
+    public void testDigest()
+    {
+        ArrayList<User> arrayList = new ArrayList<>(1);
+        arrayList.add(new User("A"));
+        AllLoggedInContent content = new AllLoggedInContent( arrayList );
+        assertArrayEquals( content.getDigest(), HASH.generateDigest( content.getByteMessage() ));
+    }
+
+    @Test
+    @DisplayName("testGetUsers")
     public void testGetUsers() {
         ArrayList<User> users = new ArrayList<>();
         users.add(new User("user1"));
@@ -25,6 +42,7 @@ public class AllLoggedInContentTest {
     }
 
     @Test
+    @DisplayName("testGetStringMessage")
     public void testGetStringMessage() {
         ArrayList<User> users = new ArrayList<>();
         users.add(new User("user1"));
@@ -34,6 +52,7 @@ public class AllLoggedInContentTest {
     }
 
     @Test
+    @DisplayName("testGetType")
     public void testGetType() {
         ArrayList<User> users = new ArrayList<>();
         users.add(new User("user1"));
@@ -42,6 +61,7 @@ public class AllLoggedInContentTest {
     }
 
     @Test
+    @DisplayName("testGetSubType")
     public void testGetSubType() {
         ArrayList<User> users = new ArrayList<>();
         users.add(new User("user1"));
@@ -50,6 +70,7 @@ public class AllLoggedInContentTest {
     }
 
     @Test
+    @DisplayName("testHasValidDigest")
     public void testHasValidDigest() {
         ArrayList<User> users = new ArrayList<>();
         users.add(new User("user1"));

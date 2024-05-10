@@ -44,8 +44,7 @@ public class PublicKeyContentTest {
         BigInteger secret = BigInteger.valueOf(123456);
         PublicKeyContent publicKeyContent = new PublicKeyContent(publicKey, secret);
 
-        byte[] encodedPublicKey = publicKey.getEncoded();
-        assertArrayEquals(encodedPublicKey, publicKeyContent.getByteMessage());
+        assertArrayEquals(publicKey.toString().getBytes(), publicKeyContent.getByteMessage());
     }
 
     @Test

@@ -1,4 +1,5 @@
 package Utils.Message.Contents;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import Utils.Message.EnumTypes.ContentTypes;
@@ -10,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class CertificateStateInvalidTest {
 
     @Test
+    @DisplayName("testIsValid")
     public void testIsValid() {
         int serialNumber = 123456;
         CertificateStateInvalid certificateStateInvalid = new CertificateStateInvalid(serialNumber);
@@ -17,6 +19,7 @@ public class CertificateStateInvalidTest {
     }
 
     @Test
+    @DisplayName("testGetSerialNumber")
     public void testGetSerialNumber() {
         int serialNumber = 123456;
         CertificateStateInvalid certificateStateInvalid = new CertificateStateInvalid(serialNumber);
@@ -24,6 +27,7 @@ public class CertificateStateInvalidTest {
     }
 
     @Test
+    @DisplayName("testGetStringMessage")
     public void testGetStringMessage() {
         int serialNumber = 123456;
         CertificateStateInvalid certificateStateInvalid = new CertificateStateInvalid(serialNumber);
@@ -31,18 +35,21 @@ public class CertificateStateInvalidTest {
     }
 
     @Test
+    @DisplayName("testGetType")
     public void testGetType() {
         CertificateStateInvalid certificateStateInvalid = new CertificateStateInvalid(123456);
-        assertEquals(ContentTypes.CA_COMMUNICATION, certificateStateInvalid.getType());
+        assertEquals(ContentTypes.COMMUNICATION, certificateStateInvalid.getType());
     }
 
     @Test
+    @DisplayName("testGetSubType")
     public void testGetSubType() {
         CertificateStateInvalid certificateStateInvalid = new CertificateStateInvalid(123456);
         assertEquals(CommunicationTypes.INVALID_CERTIFICATE, certificateStateInvalid.getSubType());
     }
 
     @Test
+    @DisplayName("testHasValidDigest")
     public void testHasValidDigest() {
         int serialNumber = 123456;
         CertificateStateInvalid certificateStateInvalid = new CertificateStateInvalid(serialNumber);
