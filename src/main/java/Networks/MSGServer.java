@@ -296,7 +296,7 @@ public class MSGServer extends Server
         {
             logOut();
             super.close();
-            LOGGER.log("User logged out.",Optional.of(LogTypes.INFO));
+            LOGGER.log("User '" + user.getUsername() + "' logged out.",Optional.of(LogTypes.INFO));
         }
     }
 

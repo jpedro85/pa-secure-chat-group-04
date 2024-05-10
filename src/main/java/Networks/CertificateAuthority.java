@@ -26,6 +26,8 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Date;
 import java.util.Optional;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -37,8 +39,9 @@ public class CertificateAuthority extends Server{
     private final Config CONFIG;
     private final Logger LOGGER;
     private ConcurrentHashMap < Integer, CertificateEntry > certificateEntries;
-    private final PrivateKey PRIVATE_KEY;
-    private final PublicKey PUBLIC_KEY;
+    private PrivateKey privateRSAKey;
+    private PublicKey publicRSAKey;
+    private final Timer TIMER;
 
     /**
      * Constructs a CertificateAuthority object.
@@ -51,9 +54,8 @@ public class CertificateAuthority extends Server{
         LOGGER = logger;
         this.certificateEntries = new ConcurrentHashMap<>();
 
-        KeyPair pair = RSA.generateKeyPair();
-        PRIVATE_KEY = pair.getPrivate();
-        PUBLIC_KEY = pair.getPublic();
+        generateKeys();
+        TIMER = createTimer();
 
     }
 
@@ -67,15 +69,50 @@ public class CertificateAuthority extends Server{
         currentClientHandlers.unlock();
 
         clientHandler.start();
-
     }
 
+    private Timer createTimer()
+    {
+        Timer timer = new Timer();
+        TimerTask task = new TimerTask()
+        {
+            @Override
+            public void run() {
+                generateKeys();
+                revokeAll();
+            }
 
+        };
 
+        int time = CONFIG.getCertificateValidityPeriod() * 1000;
+        timer.scheduleAtFixedRate(task, time, time);
+        return timer;
+    }
 
+    private void generateKeys()
+    {
+        KeyPair keyPair = RSA.generateKeyPair();
+        privateRSAKey = keyPair.getPrivate();
+        publicRSAKey = keyPair.getPublic();
+        LOGGER.log( publicRSAKey.toString() , Optional.of(LogTypes.DEBUG) );
+    }
 
+    private void revokeAll()
+    {
+        LOGGER.log("Revoking all certificates do to RSA keypair renovate.", Optional.of(LogTypes.DEBUG));
+        for(CertificateEntry entry : certificateEntries.values())
+        {
+            entry.revoke();
+            LOGGER.log("Revoking certificate of " + entry.getCertificate().getSubject() + " " + entry.getCertificate().getSerialNumber(), Optional.of(LogTypes.DEBUG));
+        }
+    }
 
-
+    @Override
+    public void close() throws IOException, InterruptedException
+    {
+        TIMER.cancel();
+        super.close();
+    }
 
 
 
@@ -259,7 +296,7 @@ public class CertificateAuthority extends Server{
         {
             try
             {
-                MessageContent publicKeyContent = ContentFactory.createPublicKeyContent( PUBLIC_KEY, sharedDHSecret );
+                MessageContent publicKeyContent = ContentFactory.createPublicKeyContent( publicRSAKey, sharedDHSecret );
                 CLIENT_OUTPUT_STREAM.writeObject( new Message( "CA" , sender, publicKeyContent ));
             }
             catch (IOException e)
@@ -293,7 +330,7 @@ public class CertificateAuthority extends Server{
 
             certificateEntries.put( certificate.getSerialNumber() , entry );
             byte[] digest = HASH.generateDigest( certificate.getCertificateData() );
-            certificate.setSignature( RSA.encryptRSA( digest, PRIVATE_KEY ) );
+            certificate.setSignature( RSA.encryptRSA( digest, privateRSAKey) );
 
             LOGGER.log(String.format("New certificate Signed:%d for %s", certificate.getSerialNumber(), certificate.getSubject()  ) , Optional.of(LogTypes.INFO ) );
 
