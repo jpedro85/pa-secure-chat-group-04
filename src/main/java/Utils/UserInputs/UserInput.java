@@ -4,23 +4,41 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+/**
+ * The UserInput class provides functionality to interactively receive user input
+ * and execute corresponding commands.
+ */
 public class UserInput
 {
+    /** List of available commands */
     private final List<Command> COMMANDS;
+
+    /** Scanner object to read user input */
     private final Scanner SCANNER;
 
+    /**
+     * Constructs a new UserInput object.
+     */
     public UserInput()
     {
         COMMANDS = new ArrayList<>();
         SCANNER = new Scanner(System.in);
     }
 
+    /**
+     * Adds a new command to the list of available commands.
+     *
+     * @param command The command to add.
+     */
     public void addCommand( Command command )
     {
         if( ! COMMANDS.contains( command ) )
             COMMANDS.add( command );
     }
 
+    /**
+     * Displays the list of available commands.
+     */
     public void removeCommand( Command command )
     {
         COMMANDS.remove( command );
@@ -37,6 +55,12 @@ public class UserInput
 
     }
 
+    /**
+     * Prompts the user for input with the specified text.
+     *
+     * @param text The prompt text.
+     * @return The user input always a non-empty string.
+     */
     public String askInput( String text )
     {
         String input;
@@ -55,6 +79,9 @@ public class UserInput
 
     }
 
+    /**
+     * Executes a command based on user input.
+     */
     public void executeFromInput()
     {
         Command command;
@@ -73,7 +100,7 @@ public class UserInput
             else
             {
                 commandName = input.substring(0, space );
-                args = input.substring( space );
+                args = input.substring( space + 1);
             }
 
             command = selectCommand( commandName );
@@ -83,6 +110,13 @@ public class UserInput
         command.execute( args );
     }
 
+
+    /**
+     * Selects a command based on the provided name.
+     *
+     * @param name The name of the command.
+     * @return The selected command, or null if no command matches or multiple commands match.
+     */
     private Command selectCommand( String name )
     {
         ArrayList<Command> matchingCommands = new ArrayList<>();

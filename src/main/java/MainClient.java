@@ -32,6 +32,12 @@ public class MainClient {
         {
             System.out.println("Can not start program.");
             System.out.println(e.getMessage());
+        }catch (RuntimeException e)
+        {
+            if ( ! e.getMessage().contains("System need to terminate doe to error"))
+            {
+                e.printStackTrace();
+            }
         }
     }
 

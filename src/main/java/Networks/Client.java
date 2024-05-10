@@ -635,8 +635,17 @@ public class Client
             CA_SERVER_CONNECTION_OUTPUT.writeObject( new Message( client.getUsername(), "CA", ContentFactory.createSigneContent( fileName , sharedDHSecretCA ) ) );
             Message msg = (Message)CA_SERVER_CONNECTION_INPUT.readObject();
 
+
             if ( ! (msg.getContent().getType() == ContentTypes.CA_COMMUNICATION && msg.getContent().getSubType() == CACommunicationTypes.SIGNE) )
-                throw new RuntimeException(  String.format( "Invalid response on login type:%s subtype:%s msg:%s", msg.getContent().getType(), msg.getContent().getSubType() , msg.getContent().getStringMessage() ) ) ;
+            {
+                if( msg.getContent().getType() == ContentTypes.ERROR )
+                {
+                    LOGGER.log( String.format( "Can not login :%s", msg.getContent().getStringMessage() ), Optional.of(LogTypes.ERROR) );
+                    throw new RuntimeException("System need to terminate doe to error");
+                }
+                else
+                    throw new RuntimeException(  String.format( "Invalid response on login type:%s subtype:%s msg:%s", msg.getContent().getType(), msg.getContent().getSubType() , msg.getContent().getStringMessage() ) ) ;
+            }
 
             IntegrityContent content = (IntegrityContent) msg.getContent();
 
@@ -732,7 +741,7 @@ public class Client
     {
         if( !args.isBlank() )
         {
-            ClientUser user = connectedUsers.get(args.substring(1));
+            ClientUser user = connectedUsers.get(args);
             if(user != null)
                 revokeCertificateOfUser( user );
             else
