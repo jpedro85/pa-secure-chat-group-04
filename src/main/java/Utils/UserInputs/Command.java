@@ -7,13 +7,13 @@ import java.util.Objects;
  */
 public class Command
 {
-    // The name of the command.
+    /** The name of the command.*/
     private final String NAME;
 
-    // The description of the command.
+    /** The description of the command.*/
     private final String DESCRIPTION;
 
-    // The function to be executed when the command is invoked.
+    /**The function to be executed when the command is invoked.*/
     private final CommandFunction FUNCTION;
 
     /**

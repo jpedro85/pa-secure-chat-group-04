@@ -6,9 +6,16 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 
+/**
+ * Class contains function to encrypt, decrypt and generate keypair for RSA algorithm.
+ */
 public class RSA
 {
 
+    /**
+     * Generates a RSA keypair with size 2048.
+     * @return the generated Keypair.
+     */
     public static KeyPair generateKeyPair()
     {
         try

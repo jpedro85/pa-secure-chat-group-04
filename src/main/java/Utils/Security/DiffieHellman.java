@@ -5,10 +5,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Random;
 
+/**
+ * This class has all the necessary methods to share a secret with diffieHellman.
+ */
 public class DiffieHellman {
 
+    /**Max length of the generated keys*/
     private static final int NUM_BITS = 128;
+
+    /**N number.*/
     private static final BigInteger N = new BigInteger ( "1289971646" );
+
+    /**G number.*/
     private static final BigInteger G = new BigInteger ( "3" );
 
     /**
