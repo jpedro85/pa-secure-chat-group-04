@@ -53,4 +53,7 @@ public class DiffieHellman {
         return publicKey.modPow ( privateKey , N );
     }
 
+    public static int getNumBits() {
+        return NUM_BITS;
+    }
 }

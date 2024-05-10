@@ -23,12 +23,13 @@ class PEMCertificateEncoderTest {
         Date later = new Date(now.getTime() + 1000000);
         byte[] signature = new byte[]{1, 2, 3, 4, 5};
 
-        certificate = new CustomCertificate();
-        certificate.setPublicKey(publicKey);
-        certificate.setIssuer("Issuer");
-        certificate.setSubject("Subject");
-        certificate.setValidFrom(now);
-        certificate.setValidTo(later);
+        certificate = new CertificateGenerator()
+                .withPublicKey(publicKey)
+                .issuedBy("Issuer")
+                .forSubject("Subject")
+                .validFrom(now)
+                .validTo(later)
+                .generate();
         certificate.setSignature(signature);
     }
 
