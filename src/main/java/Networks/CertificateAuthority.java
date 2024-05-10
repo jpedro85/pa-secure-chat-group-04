@@ -344,14 +344,14 @@ public class CertificateAuthority extends Server{
         private CustomCertificate createCertificate( CustomCertificate certificate)
         {
             //Create a new certificate for the serialNumber be correct;
-            CustomCertificate newCertificate = new CertificateGenerator().generate();
-            newCertificate.setSubject( certificate.getSubject() );
-            newCertificate.setPublicKey( certificate.getPublicKey() );
-            newCertificate.setIssuer("CA");
-            newCertificate.setValidFrom( new Date() );
-            newCertificate.setValidTo( new Date(System.currentTimeMillis() + CONFIG.getCertificateValidityPeriod() * 1000L) );
+            CertificateGenerator generator = new CertificateGenerator();
+            generator.forSubject( certificate.getSubject() );
+            generator.issuedBy("CA");
+            generator.withPublicKey(certificate.getPublicKey());
+            generator.validFrom( new Date() );
+            generator.validTo( new Date(System.currentTimeMillis() + CONFIG.getCertificateValidityPeriod() * 1000L) );
 
-            return newCertificate;
+            return generator.generate();
         }
 
         /**
