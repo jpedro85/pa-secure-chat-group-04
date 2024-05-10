@@ -111,7 +111,10 @@ public class Client
     private UserInput createUserInput()
     {
         UserInput userInput = new UserInput();
-        userInput.addCommand( new Command( "help", args -> { USER_INPUT.showOptions(); } , "Show all commands. (No Arguments)" ) );
+        userInput.addCommand( new Command( "help", args -> {
+            System.out.println("\u001B[34mBelow is the list of all available commands.\nTo enter a command, type the entire keyword or enough characters to distinguish it from others.\u001B[0m");},
+            "Show all commands. (No Arguments)" )
+        );
         userInput.addCommand( new Command( "listUsers", args -> { ListUsers(); } , "List the connected and authenticated users. (no arguments)" ) );
         userInput.addCommand( new Command( "listMsg", this::ListMessages , "List all received messages. List <username1> <username2> ... " ) );
         userInput.addCommand( new Command( "msg", this::sendCommunicationCommandHandler, "Send a message. msg (Optional)< @<username> @<username> ... > <Message>" ) );
@@ -128,8 +131,6 @@ public class Client
     {
         client = register();
         CustomCertificate certificate = createCertificate( client.getUsername() );
-
-//        certificate = askSigneCertificate( certificate );
 
         client.setCertificate( askSigneCertificate( certificate ) );
         caPublicKey = askPublicKey();
@@ -205,36 +206,64 @@ public class Client
     {
         try
         {
-            byte[] digest = HASH.generateDigest( certificate.getCertificateData() );
-
-            if ( ! Arrays.equals( RSA.decryptRSA( certificate.getSignature() , caPublicKey ) , digest ) )
-            {
-                LOGGER.log(String.format("User <%s> certificate has an invalid signature.", user.getUsername()), Optional.of(LogTypes.WARN));
-                MessageContent content =  ContentFactory.createIntegrityContent( String.valueOf( certificate.getSerialNumber() ), sharedDHSecretCA, CACommunicationTypes.REVOKE );
-                sendMessage( new Message( client.getUsername(), "CA", content ), CA_SERVER_CONNECTION_OUTPUT );
-                return false;
-            }
-
+            boolean invalid = false;
             if(certificate.getValidTo().getTime() < System.currentTimeMillis())
             {
-                LOGGER.log( String.format("User <%s> certificate has expired.", user.getUsername() ), Optional.of(LogTypes.WARN) );
+                LOGGER.log( String.format("User '%s' certificate has expired.", user.getUsername() ), Optional.of(LogTypes.WARN) );
+                invalid = true;
+            }
+
+            if( !invalid && !checkStateWithCA( certificate.getSerialNumber() ))
+            {
+                LOGGER.log( String.format("User '%s' certificate has state revoked.", user.getUsername() ), Optional.of(LogTypes.WARN) );
+                invalid = true;
+            }
+
+            byte[] digest = HASH.generateDigest( certificate.getCertificateData() );
+            if (!invalid && !hasValidSignature(user , certificate, digest))
+            {
+                LOGGER.log(String.format("User '%s' certificate has an invalid signature.", user.getUsername()), Optional.of(LogTypes.WARN));
+                invalid = true;
+            }
+
+            if(invalid)
+            {
                 MessageContent content =  ContentFactory.createIntegrityContent( String.valueOf( certificate.getSerialNumber() ), sharedDHSecretCA, CACommunicationTypes.REVOKE );
                 sendMessage( new Message( client.getUsername(), "CA", content ), CA_SERVER_CONNECTION_OUTPUT );
                 return false;
             }
-
-            if( checkStateWithCA( certificate.getSerialNumber() ))
-            {
+            else
                 return true;
-            }
-
-            return false;
         }
         catch (IOException | ClassNotFoundException e)
         {
             LOGGER.log( "Couldn't decode user certificate '" + user.getUsername() + "'" , Optional.of(LogTypes.ERROR));
             return false;
         }
+    }
+
+    private boolean hasValidSignature( User user , CustomCertificate certificate, byte[] digest)
+    {
+        boolean newestKey = false;
+        boolean result = false;
+        while (true)
+        {
+            try
+            {
+                result = Arrays.equals( RSA.decryptRSA( certificate.getSignature() , caPublicKey ) , digest ) ;
+                break;
+            }
+            catch (Exception e)
+            {
+                if (newestKey) break;
+
+                LOGGER.log("Invalid certificate signature user " + user.getUsername() + " updating CA signature.", Optional.of(LogTypes.DEBUG) );
+                caPublicKey = askPublicKey();
+                newestKey = true;
+            }
+        }
+
+        return result;
     }
 
     private boolean checkStateWithCA( int serialNUmber ) throws IOException, ClassNotFoundException
@@ -296,6 +325,11 @@ public class Client
 
     private void ListMessages( String args )
     {
+        if(messages.isEmpty())
+        {
+            System.out.println("There is no messages.");
+        }
+
         String[] userNames = args.split(" ");
 
         if( args.isBlank() )
@@ -386,7 +420,15 @@ public class Client
             else
             {
                 if( !userToSend.hasAgreedOnSecret() )
-                    startAgreeingOnSecret( userToSend );
+                    if ( isValidUserCertificate(userToSend) )
+                        startAgreeingOnSecret( userToSend );
+                    else
+                    {
+                        connectedUsers.remove( userToSend.getUsername() );
+                        sendInvalidCertificateMessage( userToSend );
+                        LOGGER.log("User '"+userToSend.getUsername()+"' is disconnected from de chat because of invalid certificate", Optional.of(LogTypes.INFO));
+                        continue;
+                    }
 
                 LOGGER.log("Sending msg "+ message + " to:" + user, Optional.of(LogTypes.DEBUG) );
                 sendCommunication(userToSend,message);
@@ -457,6 +499,21 @@ public class Client
                 ),
                 MSG_SERVER_CONNECTION_OUTPUT
         );
+    }
+
+    private void sendInvalidCertificateMessage( ClientUser user  )
+    {
+        try
+        {
+            connectedUsers.remove( user.getUsername() );
+            CustomCertificate certificate = new PEMCertificateEncoder().decode( user.getCertificate() ) ;
+            sendInvalidCertificateMessage( user, certificate );
+        }
+        catch (ClassNotFoundException | IOException e)
+        {
+            LOGGER.log("Could decode certificate.",Optional.of(LogTypes.ERROR));
+        }
+
     }
 
     private ClientUser register()
@@ -544,7 +601,7 @@ public class Client
                 if ( ((PublicKeyContent)msg.getContent()).hasValidMAC( sharedDHSecretCA.toByteArray() ) )
                 {
                     PublicKey key = ((PublicKeyContent) msg.getContent()).getPublicKey();
-                    LOGGER.log("Received CA public key.", Optional.of(LogTypes.DEBUG));
+                    LOGGER.log("Updated CA public key.", Optional.of(LogTypes.DEBUG));
                     return key;
                 }
                 else
@@ -694,6 +751,7 @@ public class Client
 
             CustomCertificate certificate = createCertificate( client.getUsername() );
             client.setCertificate( askSigneCertificate( certificate ) );
+            caPublicKey = askPublicKey();
 
             sendMessage( new Message( client.getUsername(), "Server",
                             ContentFactory.createLoginRenovateContent( client.getCertificate(), client.getUsername() )
@@ -931,6 +989,8 @@ public class Client
 
                     CustomCertificate certificate = createCertificate( client.getUsername() );
                     client.setCertificate( askSigneCertificate( certificate ) );
+                    caPublicKey = askPublicKey();
+
                     sendMessage( new Message( client.getUsername(), "Server",
                             ContentFactory.createLoginRenovateContent( client.getCertificate(), client.getUsername() )
                             ), MSG_SERVER_CONNECTION_OUTPUT
