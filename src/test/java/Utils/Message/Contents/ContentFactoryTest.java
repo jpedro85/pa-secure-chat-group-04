@@ -14,7 +14,7 @@ public class ContentFactoryTest {
 
     @Test
     public void testCreateTypeContent() {
-        ContentSubtype type = CommunicationTypes.DATA;
+        ContentSubtype type = CommunicationTypes.INVALID_CERTIFICATE;
         assertNotNull(ContentFactory.createTypeContent(type));
     }
 
@@ -27,7 +27,7 @@ public class ContentFactoryTest {
     public void testCreateIntegrityContent() {
         String content = "test";
         BigInteger secret = BigInteger.ONE;
-        ContentSubtype type = CommunicationTypes.INTEGRITY;
+        ContentSubtype type = CommunicationTypes.INVALID_CERTIFICATE;
         assertNotNull(ContentFactory.createIntegrityContent(content, secret, type));
     }
 
