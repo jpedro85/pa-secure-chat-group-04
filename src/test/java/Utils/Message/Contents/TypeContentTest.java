@@ -16,7 +16,8 @@ public class TypeContentTest {
             }
         };
         TypeContent content = new TypeContent(subtype);
-        assertEquals(ContentTypes.ERROR.toString().getBytes(), content.getByteMessage());
+        assertEquals(subtype, content.getSubType());
+        assertEquals(subtype.toString(), content.getStringMessage());
     }
 
     @Test
@@ -28,7 +29,8 @@ public class TypeContentTest {
             }
         };
         TypeContent content = new TypeContent(subtype);
-        assertEquals(ContentTypes.ERROR.toString(), content.getStringMessage());
+        assertEquals(subtype, content.getSubType());
+        assertEquals(ContentTypes.ERROR, content.getType());
     }
 
     @Test

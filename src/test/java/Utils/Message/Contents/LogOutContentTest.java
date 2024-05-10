@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import Utils.Message.EnumTypes.AccountMessageTypes;
 import Utils.Message.EnumTypes.ContentTypes;
 
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class LogOutContentTest {
@@ -12,7 +14,9 @@ public class LogOutContentTest {
     public void testGetByteMessage() {
         String username = "testUsername";
         LogOutContent logOutContent = new LogOutContent(username);
-        assertEquals(username.getBytes(), logOutContent.getByteMessage());
+        assertEquals(logOutContent.getSubType(),AccountMessageTypes.LOGOUT);
+        assertEquals(username, logOutContent.getStringMessage());
+        assertArrayEquals(username.getBytes(), logOutContent.getByteMessage());
     }
 
     @Test

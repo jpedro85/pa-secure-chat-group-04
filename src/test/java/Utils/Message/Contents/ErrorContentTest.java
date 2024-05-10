@@ -14,7 +14,7 @@ public class ErrorContentTest {
         String error = "Sample error message";
         MessageContent content = new TypeContent(LOGIN);
         ErrorContent errorContent = new ErrorContent(content, error);
-        assertEquals(error.getBytes(), errorContent.getByteMessage());
+        assertArrayEquals(error.getBytes(), errorContent.getByteMessage());
     }
 
     @Test

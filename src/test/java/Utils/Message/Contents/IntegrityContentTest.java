@@ -17,7 +17,7 @@ public class IntegrityContentTest {
         BigInteger secret = BigInteger.valueOf(123456);
         ContentSubtype type = CACommunicationTypes.SIGNE;
         IntegrityContent integrityContent = new IntegrityContent(content, secret, type);
-        assertEquals(content.getBytes(), integrityContent.getByteMessage());
+        assertArrayEquals(content.getBytes(), integrityContent.getByteMessage());
     }
 
     @Test

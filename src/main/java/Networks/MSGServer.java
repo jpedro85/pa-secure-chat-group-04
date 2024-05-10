@@ -16,11 +16,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+
+/**
+ * Represents a messaging server for handling client connections and messages.
+ * It is responsible for and new connection, redirecting and broadcast of messages from the connected users.
+ */
 public class MSGServer extends Server
 {
+    /**To keep track of all connected users.*/
     private ConcurrentHashMap< String, VarSync<ClientHandler> > connectedUsers;
+
+    /**To keep track of all usernames that are in use.*/
     private VarSync< ArrayList<String> > registeredUsernames;
 
+    /**
+     * Constructs a new MSGServer with the given configuration and logger.
+     *
+     * @param config The configuration for the server.
+     * @param logger The logger for logging server events.
+     */
     public MSGServer(Config config , Logger logger)
     {
         super( config.getMsgServerPort(), logger );
@@ -43,18 +57,20 @@ public class MSGServer extends Server
     }
 
 
-
-
-
-
-
-
-    
+    /**
+     * Represents a client handler responsible for managing client connections and requests to the MSGServer.
+     */
     private class ClientHandler extends Server.ClientHandler
     {
+
         private User user = null;
         private final VarSync<ClientHandler> LOCK;
 
+        /**
+         * Constructs a new client handler with the specified client connection.
+         *
+         * @param clientConnection The socket representing the client connection.
+         */
         public ClientHandler( Socket clientConnection )
         {
             super(clientConnection);
@@ -67,6 +83,11 @@ public class MSGServer extends Server
             handleMessage( (Message)object );
         }
 
+        /**
+         * Handles incoming messages from clients. Chooses the appropriate handler for the message.
+         *
+         * @param message The message received from the client.
+         */
         private void handleMessage( Message message ){
 
             switch ( message.getContent().getType() )
@@ -82,6 +103,11 @@ public class MSGServer extends Server
 
         }
 
+        /**
+         * Handles account-related messages (e.g., register, login, logout).
+         *
+         * @param message The account message to handle.
+         */
         private void HandleAccountMessages ( Message message ){
 
             switch( (AccountMessageTypes)message.getContent().getSubType() )
@@ -100,6 +126,11 @@ public class MSGServer extends Server
 
         }
 
+        /**
+         * Redirects messages sending directly to a specific recipient or broadcast if message sender is ""
+         *
+         * @param message The message to redirect.
+         */
         private void RedirectMessage ( Message message ){
 
             if ( message.getRecipient().isBlank() )
@@ -115,6 +146,11 @@ public class MSGServer extends Server
 
         }
 
+        /**
+         * Broadcasts the message to all connected users except the user that sent the message.
+         *
+         * @param message The message to broadcast.
+         */
         private void broadcast( Message message )
         {
             try
@@ -137,6 +173,11 @@ public class MSGServer extends Server
 
         }
 
+        /**
+         * Sends a direct message to the message recipient.
+         *
+         * @param message the message to send.
+         */
         private void sendDirectMessage( Message message )
         {
             VarSync<ClientHandler> connectedUser = connectedUsers.get( message.getRecipient() );
@@ -146,6 +187,13 @@ public class MSGServer extends Server
                 LOGGER.log("Not redirected!\nReceived redirect request to a not connected user: " + message.getRecipient() , Optional.of(LogTypes.WARN));
         }
 
+        /**
+         * Sends a direct message to the message recipient.
+         * Acquires the connectedUser user lock before sending.
+         *
+         * @param message the message to send.
+         * @param connectedUser the user to send the message.
+         */
         private void sendDirectMessage( VarSync<ClientHandler> connectedUser, Message message )
         {
             try
@@ -162,6 +210,11 @@ public class MSGServer extends Server
             }
         }
 
+        /**
+         * Registers the new username. If already exists sends an error to the client that requested the registering.
+         *
+         * @param content the content of a message of type Register.
+         */
         private void register( RegisterContent content )
         {
 
@@ -186,6 +239,11 @@ public class MSGServer extends Server
             }
         }
 
+        /**
+         * Handles the renovate login request.
+         *
+         * @param message the message to handle.
+         */
         private void renovateLogin( Message message )
         {
             if( !((LogInRenovateContent)message.getContent()).hasValidDigest() )
@@ -201,6 +259,13 @@ public class MSGServer extends Server
             LOGGER.log("User " + user.getUsername() + " renovated login .",Optional.of(LogTypes.INFO));
         }
 
+        /**
+         * Handles the login request. Checks if the user is already logged.
+         * If successfully login send a login confirmation message and a message with all current connected users.
+         * Finally broadcasts to the information of the recently connected users.
+         *
+         * @param content the logInContent.
+         */
         private void logIn( LogInContent content )
         {
             if (!content.hasValidDigest())
@@ -243,6 +308,11 @@ public class MSGServer extends Server
 
         }
 
+        /**
+         * Sends the specified error message to the user.
+         *
+         * @param content the logInContent.
+         */
         private void sendError(MessageContent content, String error )
         {
             ErrorContent sendContent = (ErrorContent)ContentFactory.createErrorContent( content, error );
@@ -262,6 +332,11 @@ public class MSGServer extends Server
             }
         }
 
+        /**
+         * Sends the specified confirmation message to the user.
+         *
+         * @param message the confirmation message.
+         */
         private void sendConfirmation( Message message )
         {
             try
@@ -278,6 +353,9 @@ public class MSGServer extends Server
             }
         }
 
+        /**
+         * Handles the logout event disconnecting the user from the server and freeing the username.
+         */
         public void logOut()
         {
             if( user != null && connectedUsers.containsKey( user.getUsername() ) )
