@@ -20,7 +20,6 @@ import Utils.Security.Integrity.HASH;
 import Utils.UserInputs.Command;
 import Utils.UserInputs.UserInput;
 
-import javax.sound.midi.Soundbank;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -41,42 +40,83 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static Utils.Message.EnumTypes.AccountMessageTypes.LOGOUT;
 
+/**
+ * Represents the main client class for handling user interactions in the chat.
+ */
 public class Client
 {
+    /** The logger for logging client events. */
     private final Logger LOGGER;
+
+    /** The configuration for the client. */
     private final Config CONFIG;
+
     private final Scanner SCANNER;
+
+    /** The key pair for the client. */
     private KeyPair clientKeyPair;
 
+    /** The public key of the Certificate Authority (CA). */
     private PublicKey caPublicKey;
 
+    /** The shared Diffie-Hellman secret with the CA. */
     private BigInteger sharedDHSecretCA;
+
+    /** The map of connected users. */
     private ConcurrentHashMap< String, ClientUser > connectedUsers;
+
+    /** The client user. */
     private ClientUser client;
+
+    /** The blocking queue for storing all received messages. */
     private BlockingQueue<MessageRecord> messages;
+
+    /** The lock for agreeing on a secret with the CA. */
     private final ReentrantLock AGREE_ON_SECRETE_LOCK;
+
+    /** The condition for agreeing on a secret with the CA.
+     * this is used to signal the main tread when the secret is acquired
+     * */
     private final Condition AGREE_ON_SECRETE_LOCK_CONDITION;
+
+    /** The synchronization variable for exiting the client. */
     private VarSync<Boolean> exit;
+
+    /** The user input prompt */
     private final UserInput USER_INPUT;
 
-    /**
-     * Server Msg Connection
-     */
+    /**Server Msg Connection*/
     private final Socket MSG_SERVER_CONNECTION;
+
+    /**Server Msg Connection ObjectInputStream*/
     private final ObjectInputStream MSG_SERVER_CONNECTION_INPUT;
+    /**Server Msg Connection ObjectOutputStream*/
     private final ObjectOutputStream MSG_SERVER_CONNECTION_OUTPUT;
 
-    /**
-     * Server CA Connection
-     */
+    /**Server CA Connection*/
     private final Socket CA_SERVER_CONNECTION;
+    /**Server CA Connection ObjectInputStream*/
     private final ObjectInputStream CA_SERVER_CONNECTION_INPUT;
+    /**Server CA Connection ObjectOutputStream*/
     private final ObjectOutputStream CA_SERVER_CONNECTION_OUTPUT;
 
+    /** The synchronization variable for checking if the client is logged in. */
     private VarSync<Boolean> isLogged;
+
+    /** The synchronization variable for checking if the client is waiting for a certificate.
+     * To help handle certificate renovation
+     * */
     private VarSync<Boolean> isWaitingForCertificate;
 
 
+    /**
+     * Constructor for the Client class.
+     * Initializes the client with the provided configuration and logger.
+     *
+     * @param config The configuration for the client.
+     * @param logger The logger for logging client events.
+     * @throws IOException If an I/O error occurs while establishing connections to de servers.
+     */
     public Client(Config config, Logger logger) throws IOException
     {
         LOGGER = logger;
@@ -108,6 +148,11 @@ public class Client
 
     }
 
+    /**
+     * Creates a UserInput instance with predefined commands.
+     *
+     * @return The UserInput instance.
+     */
     private UserInput createUserInput()
     {
         UserInput userInput = new UserInput();
@@ -124,9 +169,15 @@ public class Client
         return userInput;
     }
 
-
+    /**The listener to the incoming messages.*/
     private ClientListener listener ;
 
+    /**
+     * Starts the client.
+     * This method registers the client, obtains a signed certificate, logs in, and starts listening for messages.
+     *
+     * @throws IOException If an I/O error occurs.
+     */
     public void start() throws IOException
     {
         client = register();
@@ -155,12 +206,21 @@ public class Client
 
     }
 
+    /**
+     * Closes the connections to the messaging server and the CA server.
+     *
+     * @throws IOException If an I/O error occurs while closing the connections.
+     */
     private void CloseConnections() throws IOException
     {
         MSG_SERVER_CONNECTION.close();
         CA_SERVER_CONNECTION.close();
     }
 
+    /**
+     * Validates the connected users' certificates.
+     * if a user certificate fails the validation a msg to that user is sent.
+     */
     private void validateConnectedUsers()
     {
         Iterator<ClientUser> userIterator = connectedUsers.values().iterator();
@@ -190,6 +250,12 @@ public class Client
 
     }
 
+    /**
+     * Checks if a user's certificate is valid.
+     *
+     * @param user The user whose certificate is to be checked.
+     * @return True if the user's certificate is valid, otherwise false.
+     */
     private boolean isValidUserCertificate( User user )
     {
         try
@@ -202,6 +268,14 @@ public class Client
         }
         return false;
     }
+
+    /**
+     * Checks if a user's certificate is valid.
+     *
+     * @param user        The user whose certificate is to be checked.
+     * @param certificate The certificate to be checked.
+     * @return True if the user's certificate is valid, otherwise false.
+     */
     private boolean isValidUserCertificate( User user , CustomCertificate certificate )
     {
         try
@@ -242,6 +316,14 @@ public class Client
         }
     }
 
+    /**
+     * Checks if a user's certificate has a valid signature.
+     *
+     * @param user        The user whose certificate is to be checked.
+     * @param certificate The certificate to be checked.
+     * @param digest      The digest of the certificate data.
+     * @return True if the certificate has a valid signature, otherwise false.
+     */
     private boolean hasValidSignature( User user , CustomCertificate certificate, byte[] digest)
     {
         boolean newestKey = false;
@@ -266,6 +348,14 @@ public class Client
         return result;
     }
 
+    /**
+     * Checks the state of a certificate with the CA.
+     *
+     * @param serialNUmber The serial number of the certificate.
+     * @return True if the certificate is valid, otherwise false.
+     * @throws IOException            If an I/O error occurs.
+     * @throws ClassNotFoundException If the class of a serialized object cannot be found.
+     */
     private boolean checkStateWithCA( int serialNUmber ) throws IOException, ClassNotFoundException
     {
         MessageContent isRevokeContent = ContentFactory.createCertificateStateContent( serialNUmber );
@@ -297,6 +387,12 @@ public class Client
         return false;
     }
 
+    /**
+     * Connects to a server on the specified port.
+     *
+     * @param port The port number of the server.
+     * @return The socket connection to the server.
+     */
     private Socket connect(int port)
     {
         try
@@ -309,6 +405,9 @@ public class Client
         }
     }
 
+    /**
+     * Lists all connected users.
+     */
     private void ListUsers()
     {
         if ( connectedUsers.isEmpty() )
@@ -323,6 +422,11 @@ public class Client
         }
     }
 
+    /**
+     * Lists messages received from specific users or from all.
+     *
+     * @param args The usernames of users whose messages are to be listed.
+     */
     private void ListMessages( String args )
     {
         if(messages.isEmpty())
@@ -346,6 +450,12 @@ public class Client
             }
         }
     }
+
+    /**
+     * Lists messages received from a specific user.
+     *
+     * @param userName The username of the user whose messages are to be listed.
+     */
     private void ListMessagesOfUser( String userName )
     {
         if( userName.isBlank() )
@@ -367,6 +477,11 @@ public class Client
             System.out.println("No messages where found.");
     }
 
+    /**
+     * Handles the send message command from the user input.
+     *
+     * @param args The arguments provided by the user.
+     */
     private void sendCommunicationCommandHandler(String args )
     {
         if(args.isBlank())
@@ -402,9 +517,17 @@ public class Client
         else
             usersNames = usersToSend.iterator();
 
-        String msg = args.substring(spaceIndex+1 );
+        String msg = args.substring(spaceIndex );
         sendMessage( usersNames, msg);
     }
+
+
+    /**
+     * Sends a message to the specified users.
+     *
+     * @param usersToSend The iterator of usernames of users to whom the message is to be sent.
+     * @param message     The message to be sent.
+     */
     private void sendMessage( Iterator<String> usersToSend, String message )
     {
         ClientUser userToSend;
@@ -436,6 +559,11 @@ public class Client
         }
     }
 
+    /**
+     * Initiates the process of agreeing on a secret with another user.
+     *
+     * @param userToSendAgreeSecret The user with whom the secret is to be agreed upon.
+     */
     private void startAgreeingOnSecret( ClientUser userToSendAgreeSecret )
     {
         userToSendAgreeSecret.setAgreeingOnSecret(true);
@@ -459,6 +587,12 @@ public class Client
         }
     }
 
+    /**
+     * Sends a communication (message) to a user.
+     *
+     * @param recipient The user that the message is to be sent.
+     * @param msg       The message to be sent.
+     */
     private void sendCommunication( ClientUser recipient, String msg )
     {
         try
@@ -477,6 +611,12 @@ public class Client
         }
     }
 
+    /**
+     * Sends a message through the specified output stream.
+     *
+     * @param message The message to be sent.
+     * @param output  The output stream through which the message is to be sent.
+     */
     public void sendMessage( Message message, ObjectOutputStream output )
     {
         try
@@ -489,6 +629,12 @@ public class Client
         }
     }
 
+    /**
+     * Sends an invalid certificate message to the specified user.
+     *
+     * @param user        The user whose certificate is invalid.
+     * @param certificate The invalid certificate.
+     */
     private void sendInvalidCertificateMessage( ClientUser user, CustomCertificate certificate )
     {
         sendMessage(
@@ -501,6 +647,11 @@ public class Client
         );
     }
 
+    /**
+     * Sends an invalid certificate message to the specified user.
+     *
+     * @param user The user whose certificate is invalid.
+     */
     private void sendInvalidCertificateMessage( ClientUser user  )
     {
         try
@@ -516,6 +667,11 @@ public class Client
 
     }
 
+    /**
+     * Registers the client with a unique username.
+     *
+     * @return The registered client user.
+     */
     private ClientUser register()
     {
         do
@@ -537,6 +693,12 @@ public class Client
         while ( true );
     }
 
+    /**
+     * Requests registration with the specified username.
+     *
+     * @param username The username to be registered.
+     * @return True if registration is successful, otherwise false.
+     */
     private boolean requestRegister( String username )
     {
         try
@@ -566,6 +728,10 @@ public class Client
 
     }
 
+    /**
+     * @param message the message to handle
+     * @return true is the message if of type REGISTER
+     */
     private boolean handleAccountRequestRegisterResponse( Message message )
     {
         if ( message.getContent().getSubType() == AccountMessageTypes.REGISTER )
@@ -574,6 +740,12 @@ public class Client
             throw new RuntimeException(" Invalid Message received " + message.getContent().getType() + " " + message.getContent().getSubType() );
     }
 
+    /**
+     * Creates a certificate for the client.
+     *
+     * @param username The username of the client.
+     * @return The created certificate.
+     */
     private CustomCertificate createCertificate( String username)
     {
         clientKeyPair = RSA.generateKeyPair();
@@ -587,6 +759,11 @@ public class Client
         return certificate;
     }
 
+    /**
+     * Requests the CA server for the public key.
+     *
+     * @return The public key of the CA server.
+     */
     private PublicKey askPublicKey()
     {
         try
@@ -621,6 +798,12 @@ public class Client
         return null;
     }
 
+    /**
+     * Requests the CA server to sign the certificate and obtains the signed certificate.
+     *
+     * @param certificate The certificate to be signed.
+     * @return The signed certificate in PEM format.
+     */
     private String askSigneCertificate( CustomCertificate certificate )
     {
         isWaitingForCertificate.syncSet(true);
@@ -635,8 +818,17 @@ public class Client
             CA_SERVER_CONNECTION_OUTPUT.writeObject( new Message( client.getUsername(), "CA", ContentFactory.createSigneContent( fileName , sharedDHSecretCA ) ) );
             Message msg = (Message)CA_SERVER_CONNECTION_INPUT.readObject();
 
+
             if ( ! (msg.getContent().getType() == ContentTypes.CA_COMMUNICATION && msg.getContent().getSubType() == CACommunicationTypes.SIGNE) )
-                throw new RuntimeException(  String.format( "Invalid response on login type:%s subtype:%s msg:%s", msg.getContent().getType(), msg.getContent().getSubType() , msg.getContent().getStringMessage() ) ) ;
+            {
+                if( msg.getContent().getType() == ContentTypes.ERROR )
+                {
+                    LOGGER.log( String.format( "Can not login :%s", msg.getContent().getStringMessage() ), Optional.of(LogTypes.ERROR) );
+                    throw new RuntimeException("System need to terminate doe to error");
+                }
+                else
+                    throw new RuntimeException(  String.format( "Invalid response on login type:%s subtype:%s msg:%s", msg.getContent().getType(), msg.getContent().getSubType() , msg.getContent().getStringMessage() ) ) ;
+            }
 
             IntegrityContent content = (IntegrityContent) msg.getContent();
 
@@ -656,6 +848,12 @@ public class Client
         }
     }
 
+    /**
+     * Requests the messaging server for the list of connected users.
+     *
+     * @return The map of connected users.
+     * @throws IOException            If an I/O error occurs.
+     */
     private ConcurrentHashMap<String,ClientUser> askConnectedUsers() throws IOException
     {
         try
@@ -692,6 +890,14 @@ public class Client
         }
     }
 
+    /**
+     * Initiates the process of agreeing on a secret with the CA server.
+     *
+     * @param outputStream The output stream to the CA server.
+     * @param inputStream  The input stream from the CA server.
+     * @param recipient    The recipient of the secret (CA server).
+     * @return The agreed secret.
+     */
     private BigInteger agreeOnSecretWithCA(ObjectOutputStream outputStream, ObjectInputStream inputStream, String recipient )
     {
         try
@@ -727,12 +933,16 @@ public class Client
 
     }
 
-
+    /**
+     * Revokes the certificate of a specified user.
+     *
+     * @param args The username of the user whose certificate is to be revoked.
+     */
     private void revokeCertificate( String args )
     {
         if( !args.isBlank() )
         {
-            ClientUser user = connectedUsers.get(args.substring(1));
+            ClientUser user = connectedUsers.get(args);
             if(user != null)
                 revokeCertificateOfUser( user );
             else
@@ -742,6 +952,9 @@ public class Client
             revokeThisUserCertificate();
     }
 
+    /**
+     * Revokes the certificate of the user that is handle for this object.
+     */
     private void revokeThisUserCertificate()
     {
         try
@@ -763,6 +976,12 @@ public class Client
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Revokes the certificate of a specified user.
+     *
+     * @param user The user whose certificate is to be revoked.
+     */
     private void revokeCertificateOfUser( ClientUser user )
     {
         try
@@ -784,6 +1003,11 @@ public class Client
         }
     }
 
+    /**
+     * Logs in the client.
+     *
+     * @throws IOException If an I/O error occurs.
+     */
     private void logIn() throws IOException
     {
         try
@@ -822,6 +1046,9 @@ public class Client
 
     }
 
+    /**
+     * Logs out the client.
+     */
     private void logOut()
     {
         try
@@ -837,6 +1064,11 @@ public class Client
         }
     }
 
+    /**
+     * Terminates the client application.
+     *
+     * @throws InterruptedException If the thread is interrupted.
+     */
     public void terminate() throws InterruptedException
     {
         System.out.println("Terminating");
@@ -860,11 +1092,19 @@ public class Client
 
 
 
-
+    /**
+     * This class represents a thread responsible for listening to messages from the server.
+     */
     private class ClientListener extends Thread
     {
+
+        /** Variable for synchronizing the thread's running status. */
         private VarSync<Boolean> isRunning;
 
+        /**
+         * Constructs a new ClientListener thread.
+         * Initializes the isRunning variable to false.
+         */
         public ClientListener()
         {
             this.isRunning = new VarSync<>(false);
@@ -877,6 +1117,9 @@ public class Client
             super.start();
         }
 
+        /**
+         * Closes the thread by setting the isRunning variable to false.
+         */
         public void close()
         {
             this.isRunning.syncSet(false);
@@ -898,6 +1141,12 @@ public class Client
             }
         }
 
+
+        /**
+         * Handles incoming messages from the server.
+         *
+         * @param message The message received from the server.
+         */
         private void handleMessage( Message message )
         {
             switch ( message.getContent().getType() )
@@ -914,6 +1163,11 @@ public class Client
             }
         }
 
+        /**
+         * Handles account-related messages received from the server by invoking the correct handle.
+         *
+         * @param message The account-related message received from the server.
+         */
         private void handleAccountMessages( Message message )
         {
             switch ( (AccountMessageTypes)message.getContent().getSubType() )
@@ -928,6 +1182,11 @@ public class Client
             }
         }
 
+        /**
+         * Handles communication-related messages received from the server by invoking the correct handle.
+         *
+         * @param message The communication-related message received from the server.
+         */
         private void handleCommunicationMessage( Message message )
         {
             switch ( (CommunicationTypes)message.getContent().getSubType() )
@@ -940,6 +1199,11 @@ public class Client
             }
         }
 
+        /**
+         * Handles incoming MSG (message) type messages from the server.
+         *
+         * @param message The MSG type message received from the server.
+         */
         private void handleMSGMessage( Message message )
         {
             ClientUser fromUser = connectedUsers.get( message.getSender() );
@@ -967,6 +1231,11 @@ public class Client
             }
         }
 
+        /**
+         * Handles incoming InvalidCertificate type messages from the server.
+         *
+         * @param message The InvalidCertificate type message received from the server.
+         */
         private void handleInvalidCertificateMessage( Message message )
         {
 
@@ -1015,6 +1284,11 @@ public class Client
             }
         }
 
+        /**
+         * Handles Diffie-Hellman related messages received from the server.
+         *
+         * @param message The Diffie-Hellman related message received from the server.
+         */
         private void handleDiffieHellmanMessages( Message message )
         {
             switch ( (DiffieHellmanTypes)message.getContent().getSubType() )
@@ -1025,6 +1299,11 @@ public class Client
             }
         }
 
+        /**
+         * Handles the process of agreeing on a shared secret with another client using Diffie-Hellman key exchange.
+         *
+         * @param message The key change message received from the server.
+         */
         private void handleAgreeOnSecret( Message message )
         {
             DiffieHellmanKeyChangeContent content = (DiffieHellmanKeyChangeContent)message.getContent();
@@ -1047,6 +1326,12 @@ public class Client
                 endAgreeingOnSecret(sender,message);
         }
 
+        /**
+         * Starts the process of agreeing on a shared secret with another client using Diffie-Hellman key exchange.
+         *
+         * @param sender  The client initiating the key exchange.
+         * @param message The key change message received from the server.
+         */
         private void startAgreeingOnSecret( ClientUser sender, Message message  )
         {
             try
@@ -1073,6 +1358,12 @@ public class Client
             }
         }
 
+        /**
+         * Finalizes the process of agreeing on a shared secret with another client using Diffie-Hellman key exchange.
+         *
+         * @param sender  The client initiating the key exchange.
+         * @param message The key change message received from the server.
+         */
         private void endAgreeingOnSecret( ClientUser sender, Message message  )
         {
             try
@@ -1095,6 +1386,11 @@ public class Client
             }
         }
 
+        /**
+         * Handles the login of a user based on the received login message from the server.
+         *
+         * @param content The login content received from the server.
+         */
         private void userLogin( LogInContent content )
         {
             try
@@ -1117,6 +1413,12 @@ public class Client
             }
 
         }
+
+        /**
+         * Handles the logout of a user based on the received logout message from the server.
+         *
+         * @param content The logout content received from the server.
+         */
         private void userLogout( LogOutContent content )
         {
 
