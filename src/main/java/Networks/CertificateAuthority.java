@@ -91,19 +91,21 @@ public class CertificateAuthority extends Server{
 
     private void generateKeys()
     {
+        LOGGER.log("RSA keypair renovate.", Optional.of(LogTypes.DEBUG));
         KeyPair keyPair = RSA.generateKeyPair();
         privateRSAKey = keyPair.getPrivate();
         publicRSAKey = keyPair.getPublic();
-        LOGGER.log( publicRSAKey.toString() , Optional.of(LogTypes.DEBUG) );
     }
 
     private void revokeAll()
     {
-        LOGGER.log("Revoking all certificates do to RSA keypair renovate.", Optional.of(LogTypes.DEBUG));
         for(CertificateEntry entry : certificateEntries.values())
         {
-            entry.revoke();
-            LOGGER.log("Revoking certificate of " + entry.getCertificate().getSubject() + " " + entry.getCertificate().getSerialNumber(), Optional.of(LogTypes.DEBUG));
+            if(entry.isApproved())
+            {
+                LOGGER.log("Revoking certificate of " + entry.getCertificate().getSubject() + " " + entry.getCertificate().getSerialNumber(), Optional.of(LogTypes.DEBUG));
+                entry.revoke();
+            }
         }
     }
 

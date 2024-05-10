@@ -250,7 +250,6 @@ public class Client
         {
             try
             {
-                System.out.println(caPublicKey);
                 result = Arrays.equals( RSA.decryptRSA( certificate.getSignature() , caPublicKey ) , digest ) ;
                 break;
             }
