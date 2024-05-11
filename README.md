@@ -21,9 +21,11 @@ Este projeto, desenvolvido no contexto da disciplina de Programação Avançada,
 Todas as configurações necessárias para o funcionamento do projeto devem ser especificadas no arquivo `project.config`.
 
 ## Como Usar
-1. **Iniciar o Servidor:** Executar o script de inicialização do servidor.
-2. **Conectar Cliente:** Os clientes devem conectar-se ao servidor utilizando um identificador único.
-3. **Comunicação:** Após a autenticação via certificado digital, os usuários podem enviar mensagens usando a sintaxe `@NomeUtilizador <mensagem>` para comunicação privada ou simplesmente digitar a mensagem para envio em broadcast.
+1. **Iniciar o Servidor**
+2. **Iniciar o CA**
+3. **Conectar Cliente:** Os clientes devem conectar-se ao servidor utilizando um identificador único.
+4. **Comunicação:** Após a autenticação via certificado digital, os usuários podem enviar mensagens usando a sintaxe `msg @NomeUtilizador <mensagem>` para comunicação privada ou simplesmente digitar a `msg <mensagem>` para envio em broadcast.
+Em caso de duvida pode user help para ver os comandos
 
 ## Testes e Documentação
 - Testes de integração devem ser realizados utilizando a biblioteca JaCoCo para relatório de code coverage.
