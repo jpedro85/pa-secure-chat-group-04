@@ -8,6 +8,10 @@ public enum CommunicationTypes implements ContentSubtype {
      * Represents a complete encrypted message.
      */
     MSG(ContentTypes.COMMUNICATION),
+
+    /**
+     * Represents messages, that notify other user of an invalid certificate.
+     */
     INVALID_CERTIFICATE(ContentTypes.COMMUNICATION);
 
     private final ContentTypes TYPE;
@@ -20,10 +24,6 @@ public enum CommunicationTypes implements ContentSubtype {
         TYPE = type;
     }
 
-    /**
-     * Gets the super type of this communication type.
-     * @return the ContentTypes super type
-     */
     @Override
     public ContentTypes getSuperType() {
         return TYPE;

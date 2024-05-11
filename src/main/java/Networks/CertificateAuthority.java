@@ -98,7 +98,7 @@ public class CertificateAuthority extends Server{
      */
     private void generateKeys()
     {
-        LOGGER.log("RSA keypair renovate.", Optional.of(LogTypes.DEBUG));
+        LOGGER.log("New RSA keypair created.", Optional.of(LogTypes.DEBUG));
         KeyPair keyPair = RSA.generateKeyPair();
         privateRSAKey = keyPair.getPrivate();
         publicRSAKey = keyPair.getPublic();

@@ -80,6 +80,8 @@ public class FileLogger implements Logger, AutoCloseable {
             }
         } catch (InterruptedException | IOException e) {
             Thread.currentThread().interrupt();
+            if(e.getMessage() != null)
+                System.out.println("Cant start fileLogger. " + e.getMessage());
         }
     }
 

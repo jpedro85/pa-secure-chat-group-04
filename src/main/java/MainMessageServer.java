@@ -8,6 +8,8 @@ import Utils.Logger.Logger;
 import Utils.Logger.LoggerBuilder;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TransferQueue;
 
@@ -48,7 +50,7 @@ public class MainMessageServer {
                 .useConsoleLogging()
                 .addTimeStamp()
                 .addType()
-                .useFileLogging("log.txt")
+                .useFileLogging("MSGServer_log"+ new SimpleDateFormat("dd_MM_yy HH_mm_ss").format(new Date()) +".txt")
                 .asPlainText()
                 .addTimeStamp()
                 .addType()
@@ -60,7 +62,7 @@ public class MainMessageServer {
     {
         try
         {
-            System.out.println("Can not start program." );
+            System.out.println("Terminating" );
             server.close();
             synchronized ( server )
             {
